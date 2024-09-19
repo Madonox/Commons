@@ -4,6 +4,9 @@
 # Roblox Studio lock files
 /*.rbxlx.lock
 /*.rbxl.lock
+default.project.json
+sourcemap.json
+aftman.toml
 
 # Custom files
 moonwave.bat
