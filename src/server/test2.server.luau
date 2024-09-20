@@ -1,0 +1,1 @@
+require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server.Start()

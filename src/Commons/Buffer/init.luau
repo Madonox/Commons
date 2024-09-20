@@ -17,6 +17,9 @@ export type BufferModule = {
     Serialize: (BufferModule,{any}) -> buffer;
     Deserialize: (BufferModule) -> {any};
     ImportBuffer: (BufferModule,buffer) -> BufferModule;
+    SetTemplate: (BufferModule,{string}) -> BufferModule;
+    MakeNewBuffer: (BufferModule) -> BufferModule;
+    Destroy: (BufferModule) -> nil;
 
     pointer: number;
     buffer: buffer;
@@ -24,15 +27,17 @@ export type BufferModule = {
     __index: BufferModule;
 
     Types: {string:any};
+
+    Proxy: {[any]:any};
 }
 
 local Types = script:WaitForChild("Types")
 local BUFFER_TYPES = {
     ["BrickColor"] = {2,24,require(Types:WaitForChild("BrickColor"))};
-    ["CFrame"] = {3,768,require(Types:WaitForChild("CFrame"))};
-    ["Color3"] = {4,24};
-    ["DateTime"] = {7,64};
-    ["TweenInfo"] = {8,216};
+    ["CFrame"] = {3,96,require(Types:WaitForChild("CFrame"))};
+    ["Color3"] = {4,24,require(Types:WaitForChild("Color3"))};
+    ["DateTime"] = {7,8,require(Types:WaitForChild("DateTime"))};
+    ["TweenInfo"] = {8,19,require(Types:WaitForChild("TweenInfo"))};
     ["UDim"] = {9,128};
     ["UDim2"] = {10,256};
     ["Vector2"] = {11,128};
@@ -68,8 +73,10 @@ end
 function Buffer.new(options:BufferOptions): BufferModule
     local template = options.Template
     if options.MakeBuffer then
+        local size = SizeOfTemplate(template)
         local self = setmetatable({
-            buffer = buffer.create(SizeOfTemplate(template));
+            buffer = buffer.create(size);
+            size = size;
             pointer = 0;
             template = template;
         }, Buffer);
@@ -135,6 +142,16 @@ function Buffer:IncrementPointer(amount:number)
     self.pointer += amount
 end
 
+function Buffer:SetTemplate(template:{string})
+    self.template = template
+    return self
+end
+
+function Buffer:MakeNewBuffer()
+    self.buffer = buffer.create(self.size)
+    return self
+end
+
 --[=[
     This function imports an external buffer, and begins using it.
     
@@ -144,6 +161,13 @@ end
 ]=]
 function Buffer:ImportBuffer(buffer: buffer)
     self.buffer = buffer
+    return self
+end
+
+function Buffer:Destroy()
+    table.clear(self.template)
+    table.clear(self)
+    setmetatable(self,nil)
 end
 
 return Buffer

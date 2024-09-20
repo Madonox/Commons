@@ -1,12 +1,16 @@
--- Buffer test:
+-- Buffer / commons test:
 
-local Buffer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons"):WaitForChild("Buffer"))
+local Commons = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons"))
 
-local b = Buffer.new({
-    MakeBuffer = true;
-    Template = {"CFrame","CFrame"};
+local Buffer = Commons.Buffer
+
+local myBuffer = Buffer.new({
+    MakeBuffer =  true;
+    Template = {"CFrame","CFrame"}
 })
 
-b:Serialize({CFrame.new(0,5,0),CFrame.new(1,1,1)})
+myBuffer:Serialize({CFrame.new(0,5,0),CFrame.identity})
 
-print(b:Deserialize())
+print(myBuffer:Deserialize())
+
+local Netty = Commons.Netty.Server
