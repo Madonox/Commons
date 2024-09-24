@@ -1,260 +1,127 @@
+--!native
+--!optimize 2
 -- Madonox
 -- 2024
 
-local math = math
-local buffer = buffer
-
-type NettyDataTypes = {
-    Data: any;
-    Instance: any;
-}
-
-type NettyEventArgument = {
-    Id: string;
-    Type: NettyDataTypes;
-}
-
-export type NettyClientEventOptions = {
-    Name: string;
-    Arguments: {NettyEventArgument};
-}
-
-type Disconnectable = {
-    Disconnect: (Disconnectable) -> nil;
-}
-
 export type NettyClient = {
-    _init: ({[any]:any}) -> nil;
-    _awaitStart: () -> nil;
-    _outboundPool: {
-        reliable: {any};
-        unreliable: {any};
-    };
-    _startupThreads: {thread};
-    _outboundArguments: {[string]:{any}};
+	_init: () -> nil;
+	Start: () -> nil;
+	SpawnEvent: (any,...any) -> nil;
+	RegisterEvent: (any,(...any) -> nil) -> nil;
 
-    Start: () -> nil;
-    SpawnEvent: (buffer,number,{[any]:any}) -> nil;
-    RegisterEvent: (NettyClientEventOptions,(...any) -> nil) -> Disconnectable;
-    FireServer: (string,...any) -> nil;
-    DataTypes: NettyDataTypes;
-    EventIds: {[number]:string};
-    Events: {[string]:{[any]:any}};
-    Started: boolean;
+	Events: {[any]:(...any) -> nil};
+	EventIds: {[number]: any};
+	Started: boolean;
 }
 
-local RunService = game:GetService("RunService")
-local NettyClient:NettyClient = {} :: NettyClient
+local NettyClient:NettyClient = {}
+local Buffer = require(script.Parent.Parent:WaitForChild("Buffer"))
 
 local ReliableChannel:RemoteEvent
 local UnreliableChannel:UnreliableRemoteEvent
-local DataTypes
-local Proxy
+
+local BufferInscriber = Buffer.Inscriber.new()
+
+--[[
+
+BUFFER FORMAT:
+[(unsigned8) number_of_packets,(unsigned8) packet_type,(unsigned8) packet_arg_count, {(unsigned8) arg_type,(unsigned8) arg_index,(any) arg_data...}]
+
+]]
 
 local Initialized = false
-local InitializationThreads = {}
-function NettyClient._init(proxy:{[any]:any})
-    if not Initialized and proxy then
-        Initialized = true
-        Proxy = proxy
-        NettyClient._startupThreads = {}
-        NettyClient.Events = {}
-        ReliableChannel = script.Parent:WaitForChild("RemoteEvent")
-        UnreliableChannel = script.Parent:WaitForChild("UnreliableRemoteEvent")
-        DataTypes = {
-            Data = newproxy(false);
-            Instance = newproxy(false);
-        }
-        NettyClient.DataTypes = DataTypes
-        NettyClient.EventIds = {
-            [1] = "_init";
-        }
-        NettyClient._outboundPool = {
-            reliable = {};
-            unreliable = {};
-        }
+function NettyClient._init()
+	if not Initialized then
+		Initialized = true
 
-        local importEvent
-        importEvent = NettyClient.RegisterEvent({
-            Name = "_init";
-            Arguments = {
-                {
-                    Id = "EventIds";
-                    Type = DataTypes.Instance
-                };
-                {
-                    Id = "EventArguments";
-                    Type = DataTypes.Instance;
-                }
-            }
-        },function(eventIds:{[string]:number},eventArguments:{[string]:{[any]:any}})
-            importEvent:Disconnect()
-            for eventName,id in eventIds do
-                NettyClient.EventIds[id] = eventName
-            end
-            NettyClient._outboundArguments = eventArguments
-        end)
+		NettyClient.Events = {}
+		NettyClient.EventIds = {
+			[1] = "_init"
+		}
+		NettyClient.RegisterEvent("_init",function(ids)
+			print(ids)
+			NettyClient.EventIds = ids
+		end)
 
-        for _,thread in InitializationThreads do
-            coroutine.resume(thread)
-        end
-        table.clear(InitializationThreads)
-    end
+		ReliableChannel = script.Parent:WaitForChild("RemoteEvent")
+		UnreliableChannel = script.Parent:WaitForChild("UnreliableRemoteEvent")
+	end
 end
 
-function NettyClient._awaitStart()
-    if not NettyClient.Started then
-        table.insert(NettyClient._startupThreads,coroutine.running())
-        coroutine.yield()
-    end
+local INDEX_FORMAT = "%d_%d"
+local function GenIndexId(index,count)
+	return string.format(INDEX_FORMAT,count,index)
+end
+
+local function InoundEventHandler(inboundBuffer:buffer,args:{[any]:any})
+	local inscriber = Buffer.Inscriber.new(inboundBuffer)
+
+	local numPackets = inscriber:ReadType("unsigned8",0)
+	for packId = 1,numPackets do
+		local b_args = {}
+
+		local event_id,_ = inscriber:ReadType("unsigned8")
+		local arg_c,_ = inscriber:ReadType("unsigned8")
+		if arg_c > 0 then
+			for _ = 1,arg_c do
+				local argType,_ = inscriber:ReadType("unsigned8") -- NEEDS to be a variable as it's read first
+				local index,_ = inscriber:ReadType("unsigned8")
+				if argType == 0 then
+					b_args[index] = args[GenIndexId(index,packId)]
+					continue
+				end
+				local response,_ = inscriber:ReadType(Buffer.IdToType(argType))
+				b_args[index] = response
+			end
+		end
+
+		pcall(NettyClient.SpawnEvent,NettyClient.EventIds[event_id],table.unpack(b_args))
+	end
+
+	inscriber:Destroy()
+end
+
+local OutboundInscriber = BufferInscriber.new()
+local function ProcessOutboundPackets(packetSet:{number:{any}},channel:RemoteEvent|UnreliableRemoteEvent)
+	local size = packetSet[1]
+	if size > 0 then
+		OutboundInscriber:SetBuffer(buffer.create(size + 1))
+		local outboundTable = {}
+
+		local packetArray = packetSet[2]
+		local packetCount = math.min(255,#packetArray)
+
+		OutboundInscriber:WriteType("unsigned8",packetCount) -- total # of calls
+	end
 end
 
 function NettyClient.Start()
-    if not NettyClient.Started then
-        if not Initialized then
-            table.insert(InitializationThreads,coroutine.running())
-            coroutine.yield()
-        end
+	if not NettyClient.Started then
+		NettyClient.Started = true
 
-        ReliableChannel.OnClientEvent:Connect(function(headers,dataPool,bufferSet)
-            local headerCount = buffer.readu8(headers,0)
-            local headerOffset = 0
-            for i = 1,headerCount do
-                headerOffset += 1
-                NettyClient.SpawnEvent(bufferSet[i],buffer.readu8(headerCount,headerCount),dataPool)
-            end
-        end)
-        local reliablePool = NettyClient._outboundPool.reliable
-        local unreliablePool = NettyClient._outboundPool.unreliable
+		BufferInscriber:SetBuffer(buffer.create(5))
+		BufferInscriber:WriteType("unsigned8",1)
+		BufferInscriber:WriteType("unsigned8",1)
+		BufferInscriber:WriteType("unsigned8",1)
+		BufferInscriber:WriteType("unsigned8",0)
+		BufferInscriber:WriteType("unsigned8",1)
+		ReliableChannel:FireServer(BufferInscriber.buffer,{[1] = "a"})
 
-        local headerBuffer = buffer.create(255)
-
-        local outboundBuffers = {}
-        local instancePool = {}
-
-        -- hard-coded id fetching (triggers id download)
-        buffer.writeu8(headerBuffer,0,1)
-        ReliableChannel:FireServer(headerBuffer,instancePool,outboundBuffers)
-
-        RunService.Heartbeat:Connect(function()
-            local reliableSize = #reliablePool
-            if reliableSize > 0 then
-                local outboundPackages = math.min(reliableSize,255)
-                buffer.writeu8(headerBuffer,0,outboundPackages)
-                for i = 1,outboundPackages do
-                    local package = reliablePool[1]
-                    table.remove(reliablePool,1)
-                    buffer.writeu8(headerBuffer,i,package[1])
-                    for k,v in package[2] do
-                        instancePool[k] = v
-                    end
-                    table.insert(outboundBuffers,
-                    package[3]
-                        :MakeNewBuffer()
-                        :Serialize(package[4])
-                    )
-                    table.clear(package)
-                end
-
-                ReliableChannel:FireServer(headerBuffer,instancePool,outboundBuffers)
-                table.clear(instancePool)
-                table.clear(outboundBuffers)
-            end
-
-            -- TODO: implement unreliable channel
-        end)
-
-        NettyClient.Started = true
-        for _,thread in NettyClient._startupThreads do
-            coroutine.resume(thread)
-        end
-        table.clear(NettyClient._startupThreads)
-    end
+		ReliableChannel.OnClientEvent:Connect(InoundEventHandler)
+		UnreliableChannel.OnClientEvent:Connect(InoundEventHandler)
+	end
 end
 
-local EventDestructable = {}
-EventDestructable.__index = EventDestructable
-function EventDestructable.fromEvent(event,name)
-    return setmetatable({Event = event;Name = name},EventDestructable)
-end
-function EventDestructable:Disconnect()
-    NettyClient.Events[self.Name] = nil
-    self.Event[1]:Destroy()
-    table.clear(self.Event[2])
-    table.clear(self)
-    setmetatable(self,nil)
+function NettyClient.RegisterEvent(id:any,callback:(...any) -> nil)
+	NettyClient.Events[id] = callback
 end
 
-function NettyClient.RegisterEvent(options:NettyClientEventOptions,callback:(...any) -> nil)
-    local name = options.Name
-    if NettyClient.Events[name] then
-        error("Cannot register event " .. name .. ";  The event is already registered.")
-    end
-
-    local genTemplate = {}
-    local argTemplate = {}
-
-    for i,option:NettyEventArgument in options.Arguments do
-        if option.Type == DataTypes.Data then
-            table.insert(genTemplate,option.Id)
-            continue
-        end
-        argTemplate[i] = option.Id
-    end
-    local id
-    for _id,_name in NettyClient.EventIds do
-        if name == _name then
-            id = _id
-            break
-        end
-    end
-    local event = {Proxy.Buffer.new({
-        MakeBuffer = false;
-        Template = genTemplate;
-    }),argTemplate,callback,id}
-    NettyClient.Events[name] = event
-
-    return EventDestructable.fromEvent(event,name)
+function NettyClient.SpawnEvent(eventType:any,...:any)
+	NettyClient.Events[eventType](...)
 end
 
-
-function NettyClient.SpawnEvent(eventBuffer:buffer,eventType:number,pool:{[any]:any})
-    local args = {}
-    local event = NettyClient.Events[NettyClient.EventIds[eventType]]
-
-    local bufferArgs = event[1]
-        :ImportBuffer(eventBuffer)
-        :Deserialize()
-    local poolArgs = event[2]
-
-    local offset = 0
-    local bufferCount = 0
-    for i = 1,#bufferArgs + #poolArgs do
-        local poolArg = poolArgs[i]
-        if poolArg then
-            args[i + offset] = pool[poolArg]
-            offset += 1
-            continue
-        end
-        bufferCount += 1
-        args[i + offset] = bufferArgs[bufferCount]
-    end
-
-    event[3](table.unpack(args))
-end
-
-function NettyClient.FireServer(event:string,...)
-    NettyClient._awaitStart()
-    local eventData = NettyClient.Events[event]
-    local instanceArguments = {}
-    local bufferArguments = {}
-
-    table.insert(NettyClient._outboundPool.reliable,{
-        eventData[4];
-        instanceArguments;
-        eventData[1];
-        bufferArguments;
-    })
+function NettyClient.FireServer(id:any,...:any)
+	
 end
 
 return NettyClient

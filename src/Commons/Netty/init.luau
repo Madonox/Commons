@@ -1,3 +1,5 @@
+--!native
+--!optimize 2
 -- Madonox
 -- 2024
 
@@ -7,9 +9,6 @@ local NettyServer = require(script:WaitForChild("NettyServer"))
 export type Netty = {
     Client: NettyClient.NettyClient;
     Server: NettyServer.NettyServer;
-
-    Proxy: {[any]:any};
-    ProxyEvent: () -> nil;
 }
 
 local Netty = {
@@ -18,20 +17,10 @@ local Netty = {
 }
 
 if RunService:IsServer() then
-    print("server")
-    function Netty.ProxyEvent()
-        print("proxy event")
-        NettyServer._init(Netty.Proxy)
-    end
-    NettyServer._init(Netty.Proxy) -- call here in case this is routed from a secondary require
-
+    NettyServer._init()
     return Netty
 end
 
-print("client")
-function Netty.ProxyEvent()
-    NettyClient._init(Netty.Proxy)
-end
-NettyServer._init(Netty.Proxy) -- call here in case this is routed from a secondary require
+NettyClient._init()
 
 return Netty

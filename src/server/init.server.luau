@@ -2,7 +2,7 @@
 
 local Commons = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons"))
 
-local Buffer = Commons.Buffer
+local Buffer = Commons.Buffer.Buffer
 
 local myBuffer = Buffer.new({
     MakeBuffer =  true;
