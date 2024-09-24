@@ -12,3 +12,14 @@ task.spawn(function()
 		end
 	end
 end)
+
+local counter = 0
+NettyClient.RegisterEvent("test",function()
+	counter += 1
+end)
+
+task.spawn(function()
+	while task.wait(1) do
+		print("client: " .. counter)
+	end
+end)

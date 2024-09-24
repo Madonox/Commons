@@ -7,6 +7,14 @@ end)
 
 Netty.Start()
 
-while task.wait(1) do
-	print(c)
+task.spawn(function()
+	while task.wait(1) do
+		print(c)
+	end
+end)
+
+while task.wait() do
+	for i = 1,200 do
+		Netty.FireAllClients("test")
+	end
 end

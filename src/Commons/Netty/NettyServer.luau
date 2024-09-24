@@ -259,11 +259,11 @@ function NettyServer.FireAllClients(eventId:any,...:any)
 	end
 
 	-- less calculations this way
-	local output = {table.find(NettyServer.EventIds,eventId),bufferArgs,tableArgs}
+	local ref = table.find(NettyServer.EventIds,eventId)
 	for _,player in Players:GetPlayers() do
 		local profile = NettyServer.Outbound.reliable[player]
 		table.insert(profile[1],bufferSize)
-		table.insert(profile[2],table.clone(output)) -- clone for manual gc
+		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
 	end
 end
 
@@ -286,11 +286,11 @@ function NettyServer.FireList(players:{Player},eventId:any,...:any)
 	end
 
 	-- less calculations this way
-	local output = {table.find(NettyServer.EventIds,eventId),bufferArgs,tableArgs}
+	local ref = table.find(NettyServer.EventIds,eventId)
 	for _,player in players do
 		local profile = NettyServer.Outbound.reliable[player]
 		table.insert(profile[1],bufferSize)
-		table.insert(profile[2],table.clone(output)) -- clone for manual gc
+		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
 	end
 end
 
