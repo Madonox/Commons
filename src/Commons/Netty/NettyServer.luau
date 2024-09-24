@@ -127,6 +127,7 @@ BUFFER FORMAT:
 
 ]]
 
+local OUTBOUND_CONNECTION
 local function ProcessOutboundPackets(playerSet:{[Player]:{any}},channel)
 	for player,profile in playerSet do
 		local size = profile[1]
@@ -136,10 +137,18 @@ local function ProcessOutboundPackets(playerSet:{[Player]:{any}},channel)
 			local packetArray = profile[2]
 			local packetCount = math.min(255,#packetArray)
 
-			local memSize = 1
+			local memSize = 1 -- initialize with 1 for the length header
 			for _ = 1,packetCount do
-				memSize += size[1]
-				table.remove(size,1)
+				local refSize = size[1]
+				if refSize then
+					memSize += refSize
+					table.remove(size,1)
+					continue
+				end
+				-- error catching
+				OUTBOUND_CONNECTION:Disconnect()
+				warn("[NettyServer]: An error was detected during outbound replication!  Please report this to the maintainer!")
+				return
 			end
 
 			inscriber:SetBuffer(buffer.create(memSize)) -- 1 for global header
@@ -162,7 +171,7 @@ local function ProcessOutboundPackets(playerSet:{[Player]:{any}},channel)
 							inscriber:WriteType("unsigned8",index)
 							continue
 						end
-	
+
 						local bType = Buffer.ResolveType(arg)
 						inscriber:WriteType("unsigned8",Buffer.TypeToId(bType))
 						inscriber:WriteType("unsigned8",index)
@@ -195,7 +204,7 @@ function NettyServer.Start()
 
 		local reliableOut = NettyServer.Outbound.reliable
 		local unreliableOut = NettyServer.Outbound.unreliable
-		game:GetService("RunService").Heartbeat:Connect(function()
+		OUTBOUND_CONNECTION = game:GetService("RunService").Heartbeat:Connect(function()
 			ProcessOutboundPackets(reliableOut,ReliableChannel)
 			ProcessOutboundPackets(unreliableOut,UnreliableChannel)
 		end)

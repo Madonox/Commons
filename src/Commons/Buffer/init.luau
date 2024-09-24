@@ -44,8 +44,15 @@ local BUFFER_TYPES = {
     ["Vector2int16"] = {0,32};
     ["Vector3"] = {0,192};
     ["Vector3int16"] = {0,48};
+
     ["unsigned8"] = {0,1,require(Types:WaitForChild("Unsigned8"))};
+    ["unsigned16"] = {0,2,require(Types:WaitForChild("Unsigned16"))};
+    ["unsigned32"] = {0,4,require(Types:WaitForChild("Unsigned32"))};
+
     ["int8"] = {0,1,require(Types:WaitForChild("Integer8"))};
+    ["int16"] = {0,2,require(Types:WaitForChild("Integer16"))};
+    ["int32"] = {0,4,require(Types:WaitForChild("Integer32"))};
+    
     ["float32"] = {0,4,require(Types:WaitForChild("Float32"))};
     ["float64"] = {0,8,require(Types:WaitForChild("Float64"))};
 }
@@ -295,33 +302,20 @@ local function _resolveNumberType(number:number)
             return "float32"
         end
         return "float64"
-    end
-
-    if math.sign(number) < 0 then
+    elseif math.sign(number) < 0 then
         if number <= I8_NUMERICAL_MAX and number >= I8_NUMERICAL_MIN then
             return "int8"
-        end
-
-        if number <= I16_NUMERICAL_MAX and number >= I16_NUMERICAL_MIN then
+        elseif number <= I16_NUMERICAL_MAX and number >= I16_NUMERICAL_MIN then
             return "int16"
         end
         return "int32"
-    end
-
-    if number <= U8_NUMERICAL_MAX and number >= U8_NUMERICAL_MIN then
+    elseif number <= U8_NUMERICAL_MAX and number >= U8_NUMERICAL_MIN then
         return "unsigned8"
-    end
-
-    if number <= U16_NUMERICAL_MAX and number >= U16_NUMERICAL_MIN then
+    elseif number <= U16_NUMERICAL_MAX and number >= U16_NUMERICAL_MIN then
         return "unsigned16"
-    end
-
-    if number <= U32_NUMERICAL_MAX and number >= U32_NUMERICAL_MIN then
+    elseif number <= U32_NUMERICAL_MAX and number >= U32_NUMERICAL_MIN then
         return "unsigned32"
-    end
-
-    -- number is too big to use any of the aformentioned data type- default to floats for extra size
-    if number <= F32_NUMERICAL_MAX and number >= F32_NUMERICAL_MIN then
+    elseif number <= F32_NUMERICAL_MAX and number >= F32_NUMERICAL_MIN then
         return "float32"
     end
     return "float64"

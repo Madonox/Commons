@@ -13,8 +13,10 @@ task.spawn(function()
 	end
 end)
 
+local RNG = Random.new(math.random())
 while task.wait() do
+	local lSent = 0
 	for i = 1,200 do
-		Netty.FireAllClients("test")
+		Netty.FireAllClients("test",RNG:NextInteger(-100000000000,100000000000),RNG:NextInteger(-100000000000,100000000000),RNG:NextInteger(-100000000000,100000000000))
 	end
 end
