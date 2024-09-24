@@ -198,7 +198,7 @@ export type BufferInscriber = {
     WriteType: (BufferInscriber,string,any) -> BufferInscriber;
     ReadType: (BufferInscriber,string,number?) -> (any,number);
 
-    SetBuffer: (BufferInscriber,buffer) -> BufferInscriber;
+    SetBuffer: (BufferInscriber,buffer?) -> BufferInscriber;
     Destroy: (BufferInscriber) -> nil;
 
     pointer: number;
@@ -290,7 +290,7 @@ local U32_NUMERICAL_MIN = 0
 local U32_NUMERICAL_MAX = 4294967295
 
 local function _resolveNumberType(number:number)
-    if math.floor(number) == number then
+    if math.floor(number) ~= number then
         if number <= F32_NUMERICAL_MAX and number >= F32_NUMERICAL_MIN then
             return "float32"
         end

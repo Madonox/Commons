@@ -1,8 +1,12 @@
 local Netty = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server
 
-Netty.RegisterEvent("test",function(player,arg1,arg3)
-	print(arg1,arg3)
-	print(player)
+local c = 0
+Netty.RegisterEvent("test",function(player,...)
+	c += 1
 end)
 
 Netty.Start()
+
+while task.wait(1) do
+	print(c)
+end

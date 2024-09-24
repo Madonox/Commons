@@ -9,6 +9,8 @@ export type NettyServer = {
 
 	SpawnEvent: (Player,any,...any) -> nil;
 	FireClient: (Player,any,...any) -> nil;
+	FireAllClients: (any,...any) -> nil;
+	FireList: ({Player},any,...any) -> nil;
 	RegisterEvent: (any,(Player,...any) -> nil) -> nil;
 
 	Started: boolean;
@@ -43,15 +45,13 @@ local function GenIndexId(index,count)
 end
 
 local function InoundEventHandler(player:Player,inboundBuffer:buffer,args:{[any]:any})
-	print(player,inboundBuffer,args)
 	local inscriber = BufferInscriber.new(inboundBuffer)
 	local numPackets = inscriber:ReadType("unsigned8",0)
-
 	for packId = 1,numPackets do
 		local b_args = {}
-
 		local event_id,_ = inscriber:ReadType("unsigned8")
 		local arg_c,_ = inscriber:ReadType("unsigned8")
+		
 		if arg_c > 0 then
 			for _ = 1,arg_c do
 				local argType,_ = inscriber:ReadType("unsigned8") -- NEEDS to be a variable as it's read first
@@ -78,8 +78,8 @@ function NettyServer._init()
 		NettyServer.Events = {}
 		NettyServer.EventIds = {}
 
-		local reliableOut = {}
-		local unreliableOut = {}
+		local reliableOut = {} :: {[Player]: {any}}
+		local unreliableOut = {} :: {[Player]: {any}}
 
 		NettyServer.Outbound = {
 			reliable = reliableOut;
@@ -87,10 +87,13 @@ function NettyServer._init()
 		}
 
 		Players.PlayerAdded:Connect(function(player)
-			reliableOut[player] = {0,{},BufferInscriber.new()}
-			unreliableOut[player] = {0,{},BufferInscriber.new()}
+			reliableOut[player] = {{},{},BufferInscriber.new()}
+			unreliableOut[player] = {{},{},BufferInscriber.new()}
 		end)
 		Players.PlayerRemoving:Connect(function(player)
+			table.clear(reliableOut[player][1])
+			table.clear(unreliableOut[player][1])
+
 			table.clear(reliableOut[player][2])
 			table.clear(unreliableOut[player][2])
 
@@ -104,8 +107,8 @@ function NettyServer._init()
 			unreliableOut[player] = nil
 		end)
 
+		-- built in sync event
 		NettyServer.RegisterEvent("_init",function(player,...)
-			print(player,...)
 			NettyServer.FireClient(player,"_init",NettyServer.EventIds)
 		end)
 
@@ -124,16 +127,23 @@ BUFFER FORMAT:
 
 ]]
 
-local function ProcessOutboundPackets(playerSet:{[Player]:{any}},channel:RemoteEvent|UnreliableRemoteEvent)
+local function ProcessOutboundPackets(playerSet:{[Player]:{any}},channel)
 	for player,profile in playerSet do
 		local size = profile[1]
-		if size > 0 then
+		if #size > 0 then
 			local inscriber:Buffer.BufferInscriber = profile[3]
-			inscriber:SetBuffer(buffer.create(size + 1)) -- 1 for global header
-			local outboundTable = {}
 
 			local packetArray = profile[2]
 			local packetCount = math.min(255,#packetArray)
+
+			local memSize = 1
+			for _ = 1,packetCount do
+				memSize += size[1]
+				table.remove(size,1)
+			end
+
+			inscriber:SetBuffer(buffer.create(memSize)) -- 1 for global header
+			local outboundTable = {}
 
 			inscriber:WriteType("unsigned8",packetCount) -- total # of calls
 			for i = 1,packetCount do
@@ -142,29 +152,37 @@ local function ProcessOutboundPackets(playerSet:{[Player]:{any}},channel:RemoteE
 
 				inscriber:WriteType("unsigned8",packet[1]) -- event id
 				local bufferArgs = packet[2]
-				inscriber:WriteType("unsigned8",#bufferArgs) -- bufferArgs contains markers where instances should be
+				local argSize = #bufferArgs
+				inscriber:WriteType("unsigned8",argSize) -- bufferArgs contains markers where instances should be
 
-				for index,arg in bufferArgs do
-					if arg == INSTANCE_MARKER then
-						inscriber:WriteType("unsigned8",0)
+				if argSize > 0 then
+					for index,arg in bufferArgs do
+						if arg == INSTANCE_MARKER then
+							inscriber:WriteType("unsigned8",0)
+							inscriber:WriteType("unsigned8",index)
+							continue
+						end
+	
+						local bType = Buffer.ResolveType(arg)
+						inscriber:WriteType("unsigned8",Buffer.TypeToId(bType))
 						inscriber:WriteType("unsigned8",index)
-						continue
+						inscriber:WriteType(bType,arg)
 					end
-
-					local bType = Buffer.ResolveType(arg)
-					inscriber:WriteType("unsigned8",Buffer.TypeToId(bType))
-					inscriber:WriteType("unsigned8",index)
-					inscriber:WriteType(bType,arg)
+					table.clear(bufferArgs)
 				end
 
-				for id,arg in packet[3] do
+				local instanceArgs = packet[3]
+				for id,arg in instanceArgs do
 					outboundTable[GenIndexId(id,i)] = arg
 				end
+
+				table.clear(instanceArgs)
+				table.clear(packet)
 			end
 
 			inscriber:SetPointer(0)
-			profile[1] = 0
 			channel:FireClient(player,inscriber.buffer,outboundTable)
+			table.clear(outboundTable)
 		end
 	end
 end
@@ -218,8 +236,62 @@ function NettyServer.FireClient(player:Player,eventId:any,...:any)
 	end
 
 	local profile = NettyServer.Outbound.reliable[player]
-	profile[1] += bufferSize
+	table.insert(profile[1],bufferSize)
 	table.insert(profile[2],{table.find(NettyServer.EventIds,eventId),bufferArgs,tableArgs})
+end
+
+function NettyServer.FireAllClients(eventId:any,...:any)
+	local bufferArgs = {}
+	local bufferSize = 2
+	local tableArgs = {}
+
+	for index,arg in {...} do
+		local bType = Buffer.ResolveType(arg)
+		if bType then
+			bufferSize += Buffer.SizeOf(bType) + 2
+			bufferArgs[index] = arg
+			continue
+		end
+
+		bufferArgs[index] = INSTANCE_MARKER
+		bufferSize += 2
+		tableArgs[index] = arg
+	end
+
+	-- less calculations this way
+	local output = {table.find(NettyServer.EventIds,eventId),bufferArgs,tableArgs}
+	for _,player in Players:GetPlayers() do
+		local profile = NettyServer.Outbound.reliable[player]
+		table.insert(profile[1],bufferSize)
+		table.insert(profile[2],table.clone(output)) -- clone for manual gc
+	end
+end
+
+function NettyServer.FireList(players:{Player},eventId:any,...:any)
+	local bufferArgs = {}
+	local bufferSize = 2
+	local tableArgs = {}
+
+	for index,arg in {...} do
+		local bType = Buffer.ResolveType(arg)
+		if bType then
+			bufferSize += Buffer.SizeOf(bType) + 2
+			bufferArgs[index] = arg
+			continue
+		end
+
+		bufferArgs[index] = INSTANCE_MARKER
+		bufferSize += 2
+		tableArgs[index] = arg
+	end
+
+	-- less calculations this way
+	local output = {table.find(NettyServer.EventIds,eventId),bufferArgs,tableArgs}
+	for _,player in players do
+		local profile = NettyServer.Outbound.reliable[player]
+		table.insert(profile[1],bufferSize)
+		table.insert(profile[2],table.clone(output)) -- clone for manual gc
+	end
 end
 
 return NettyServer
