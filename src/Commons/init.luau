@@ -6,7 +6,7 @@ local Netty = require(script:WaitForChild("Netty"))
 
 type Commons = {
     Netty: Netty.Netty;
-    Buffer: Buffer.BufferModule;
+    Buffer: Buffer.BufferLibrary;
 }
 
 local Commons:Commons = {

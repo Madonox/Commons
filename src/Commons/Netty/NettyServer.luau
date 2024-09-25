@@ -66,7 +66,6 @@ local function InoundEventHandler(player:Player,inboundBuffer:buffer,args:{[any]
 		end
 
 		pcall(NettyServer.SpawnEvent,player,NettyServer.EventIds[event_id],table.unpack(b_args))
-		--NettyServer.SpawnEvent(player,NettyServer.EventIds[event_id],table.unpack(args))
 	end
 
 	inscriber:Destroy()

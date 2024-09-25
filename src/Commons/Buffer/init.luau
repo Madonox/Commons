@@ -27,8 +27,6 @@ export type BufferModule = {
     __index: BufferModule;
 
     Types: {string:any};
-
-    Proxy: {[any]:any};
 }
 
 local Types = script:WaitForChild("Types")
@@ -38,12 +36,12 @@ local BUFFER_TYPES = {
     ["Color3"] = {0,24,require(Types:WaitForChild("Color3"))};
     ["DateTime"] = {0,8,require(Types:WaitForChild("DateTime"))};
     ["TweenInfo"] = {0,19,require(Types:WaitForChild("TweenInfo"))};
-    ["UDim"] = {0,128};
-    ["UDim2"] = {0,256};
-    ["Vector2"] = {0,128};
-    ["Vector2int16"] = {0,32};
-    ["Vector3"] = {0,192};
-    ["Vector3int16"] = {0,48};
+    ["UDim"] = {0,16,require(Types:WaitForChild("Udim"))};
+    ["UDim2"] = {0,32,require(Types:WaitForChild("Udim2"))};
+    ["Vector2"] = {0,16,require(Types:WaitForChild("Vector2"))};
+    ["Vector2int16"] = {0,4,require(Types:WaitForChild("Vector2int16"))};
+    ["Vector3"] = {0,24,require(Types:WaitForChild("Vector3"))};
+    ["Vector3int16"] = {0,6,require(Types:WaitForChild("Vector3int16"))};
 
     ["unsigned8"] = {0,1,require(Types:WaitForChild("Unsigned8"))};
     ["unsigned16"] = {0,2,require(Types:WaitForChild("Unsigned16"))};
@@ -52,7 +50,7 @@ local BUFFER_TYPES = {
     ["int8"] = {0,1,require(Types:WaitForChild("Integer8"))};
     ["int16"] = {0,2,require(Types:WaitForChild("Integer16"))};
     ["int32"] = {0,4,require(Types:WaitForChild("Integer32"))};
-    
+
     ["float32"] = {0,4,require(Types:WaitForChild("Float32"))};
     ["float64"] = {0,8,require(Types:WaitForChild("Float64"))};
 }
@@ -89,7 +87,7 @@ end
     
     @within Buffer
     @param options BufferOptions -- Configuration options for class initialization
-    @return BufferModule -- Returns an instance of the Buffer class.
+    @return Buffer -- Returns an instance of the Buffer class.
 ]=]
 function Buffer.new(options:BufferOptions): BufferModule
     local template = options.Template
@@ -149,27 +147,69 @@ function Buffer:Deserialize()
     return response
 end
 
+--[=[
+    This function is utilized internally.  It is used to write a specific data type into a buffer, and increment the pointer accordingly.
+    
+    @method Write
+    @within Buffer
+    @param memorySize number -- The amount of memory (bytes) being written.
+    @param dataType string -- The data type being inscribed.
+    @param value number -- The value being inscribed.
+    @return {any}
+]=]
 function Buffer:Write(memorySize:number,dataType:string,value:number)
     buffer[dataType](self.buffer,self.pointer,value)
     self:IncrementPointer(memorySize)
     return self
 end
 
+--[=[
+    This function is utilized internally.  It is used to read a specific data type from the buffer, and increment the pointer accordingly.
+    
+    @method Read
+    @within Buffer
+    @param memorySize number -- The amount of memory being read.
+    @param dataType string -- The data type being read.
+    @return {any}
+]=]
 function Buffer:Read(memorySize:number,dataType:string)
     local response = buffer[dataType](self.buffer,self.pointer)
     self:IncrementPointer(memorySize)
     return response
 end
 
+--[=[
+    This function is used internally.  It is used to increment the pointer.
+    
+    @method IncrementPointer
+    @within Buffer
+    @param amount number -- How much to increment the pointer by.
+    @return {any}
+]=]
 function Buffer:IncrementPointer(amount:number)
     self.pointer += amount
 end
 
+--[=[
+    This function allows you to specify the serialization / deserialization template.
+    
+    @method SetTemplate
+    @within Buffer
+    @param template {string} -- The new template.
+    @return {any}
+]=]
 function Buffer:SetTemplate(template:{string})
     self.template = template
     return self
 end
 
+--[=[
+    This function creates a new buffer with size relative to the current template.
+    
+    @method MakeNewBuffer
+    @within Buffer
+    @return {any}
+]=]
 function Buffer:MakeNewBuffer()
     self.buffer = buffer.create(self.size)
     return self
@@ -180,13 +220,20 @@ end
     
     @method ImportBuffer
     @within Buffer
-    @param buffer Buffer
+    @param buffer buffer -- The buffer being imported.
 ]=]
 function Buffer:ImportBuffer(buffer: buffer)
     self.buffer = buffer
     return self
 end
 
+--[=[
+    This function cleans up the Buffer instance.
+    
+    @method Destroy
+    @within Buffer
+    @return {any}
+]=]
 function Buffer:Destroy()
     table.clear(self.template)
     table.clear(self)
@@ -212,9 +259,20 @@ export type BufferInscriber = {
     buffer: buffer;
 }
 
+--[=[
+    @class BufferInscriber
+    Allows for a more manual approach to buffer serialization / deserialization.  It requires some manual byte math, and buffer construction.
+]=]
 local BufferInscriber = {}
 BufferInscriber.__index = BufferInscriber
 
+--[=[
+    Create an instance of the BufferInscriber class.
+    
+    @within BufferInscriber
+    @param instance buffer? -- The buffer to initialize the class with.
+    @return BufferInscriber -- Returns an instance of the BufferInscriber class.
+]=]
 function BufferInscriber.new(instance:buffer?)
     return setmetatable({
         buffer = instance;
@@ -222,28 +280,72 @@ function BufferInscriber.new(instance:buffer?)
     },BufferInscriber)
 end
 
+--[=[
+    This function is used to increment the pointer.
+    
+    @method IncrementPointer
+    @within BufferInscriber
+    @param amount number -- How much to increment the pointer by.
+    @return {any}
+]=]
 function BufferInscriber:IncrementPointer(amount:number)
     self.pointer += amount
     return self
 end
 
-function BufferInscriber:SetPointer(number:number)
-    self.pointer = number
+--[=[
+    This function is used to set the pointer.
+    
+    @method IncrementPointer
+    @within BufferInscriber
+    @param amount number -- What to set the pointer to.
+    @return {any}
+]=]
+function BufferInscriber:SetPointer(amount:number)
+    self.pointer = amount
     return self
 end
 
+--[=[
+    This function is utilized internally.  It is used to write a specific data type into a buffer, and increment the pointer accordingly.
+    
+    @method Write
+    @within BufferInscriber
+    @param memorySize number -- The amount of memory (bytes) being written.
+    @param dataType string -- The data type being inscribed.
+    @param value number -- The value being inscribed.
+    @return {any}
+]=]
 function BufferInscriber:Write(memorySize:number,dataType:string,value:number)
     buffer[dataType](self.buffer,self.pointer,value)
     self:IncrementPointer(memorySize)
     return self
 end
 
+--[=[
+    This function is utilized internally.  It is used to read a specific data type from the buffer, and increment the pointer accordingly.
+    
+    @method Read
+    @within BufferInscriber
+    @param memorySize number -- The amount of memory being read.
+    @param dataType string -- The data type being read.
+    @return {any}
+]=]
 function BufferInscriber:Read(memorySize:number,dataType:string)
     local response = buffer[dataType](self.buffer,self.pointer)
     self:IncrementPointer(memorySize)
     return response
 end
 
+--[=[
+    This function is used to read a specific data type from the buffer.
+    
+    @method ReadType
+    @within BufferInscriber
+    @param dataType string -- What DataType to read.
+    @param offset number? -- A starting pointer.  If none is supplied, it will use the current pointer.
+    @return {any}
+]=]
 function BufferInscriber:ReadType(dataType:string,offset:number?)
     if offset then
         self.pointer = offset
@@ -251,16 +353,40 @@ function BufferInscriber:ReadType(dataType:string,offset:number?)
     return BUFFER_TYPES[dataType][3].Deserialize(self),self.pointer
 end
 
+
+--[=[
+    This function is used to write a specific data type into the buffer.
+    
+    @method WriteType
+    @within BufferInscriber
+    @param dataType string -- What DataType to write.
+    @param data any -- The data to write into the buffer.
+    @return {any}
+]=]
 function BufferInscriber:WriteType(dataType:string,data:any)
     BUFFER_TYPES[dataType][3].Serialize(self,data)
     return self
 end
 
-function BufferInscriber:SetBuffer(instance:buffer)
-    self.buffer = instance
+--[=[
+    This function imports an external buffer, and begins using it.
+    
+    @method SetBuffer
+    @within BufferInscriber
+    @param buffer buffer -- The buffer being imported.
+]=]
+function BufferInscriber:SetBuffer(buffer:buffer)
+    self.buffer = buffer
     return self
 end
 
+--[=[
+    This function cleans up the BufferInscriber instance.
+    
+    @method Destroy
+    @within BufferInscriber
+    @return nil
+]=]
 function BufferInscriber:Destroy()
     table.clear(self)
     setmetatable(self,nil)
