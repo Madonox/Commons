@@ -41,9 +41,16 @@ local ProxyFunctions = {
 	__len = function(proxy)
 		return #OBSERVER_REF[proxy]
 	end;
-	
+
 }
 
+--[=[
+@function new
+@return {[any]:any} -- Returns a table with observational capabilities.
+
+:::note
+The returned data type is actually a `userdata`.  In order to performantly emit table read / write events, we need to use this setup.
+]=]
 function Observer.new()
 	local readEmitters = {}
 	local writeEmitters = {}
@@ -70,6 +77,10 @@ function Observer.new()
 	return proxy
 end
 
+--[=[
+@function new
+@param proxy {[any]:any} -- The observational table you want to clean up.
+]=]
 function Observer.cleanup(proxy)
 	local proxyTable = OBSERVER_REF[proxy]
 	if proxyTable then
