@@ -34,17 +34,22 @@ export type Pool = {
 }
 
 --[=[
+
 @class Pool
 The Pool class is used to handle all forms of operation management.  Additionally, it manages the thread being used to run all of the queued operations.
+
 ]=]
 local Pool:Pool = {} :: Pool
 Pool.__index = Pool
 
 --[=[
+
 @function new
+@within Pool
 This function creates a new instance of the Pool class.
 @param options PoolOptions -- The initial configuration for the class.
 @return Pool
+
 ]=]
 function Pool.new(options:PoolOptions)
 	return setmetatable({
@@ -56,9 +61,11 @@ function Pool.new(options:PoolOptions)
 end
 
 --[=[
+
 @within Pool
 This function spawns a thread to process operations.  There can only be one thread running at once.
 @return Pool
+
 ]=]
 function Pool:Spawn()
 	if not self.currentThread then
@@ -82,9 +89,11 @@ function Pool:Spawn()
 end
 
 --[=[
+
 @within Pool
 This function stops the current thread.
 @return Pool
+
 ]=]
 function Pool:Stop()
 	local thread = self.currentThread
@@ -96,9 +105,11 @@ function Pool:Stop()
 end
 
 --[=[
+
 @within Pool
 This function returns true if the Pool currently has a working thread.
 @return boolean
+
 ]=]
 function Pool:ThreadActive()
 	if self.currentThread then
@@ -108,9 +119,11 @@ function Pool:ThreadActive()
 end
 
 --[=[
+
 @within Pool
 This function returns the current thread id if there is a working thread.
 @return string?
+
 ]=]
 function Pool:GetCurrentId()
 	local thread = self.currentThread
@@ -120,10 +133,12 @@ function Pool:GetCurrentId()
 end
 
 --[=[
+
 @within Pool
 This function queues a function to be executed by the pool.
 @param operation (number?, Pool?) -> nil
 @return Pool
+
 ]=]
 function Pool:QueueOperation(operation:(number?,Pool?) -> nil)
 	table.insert(self.operationQueue,operation)
@@ -131,10 +146,12 @@ function Pool:QueueOperation(operation:(number?,Pool?) -> nil)
 end
 
 --[=[
+
 @within Pool
 This function adjusts the interval at which the pool executes operations at.
 @param interval number
 @return Pool
+
 ]=]
 function Pool:AdjustInterval(interval:number)
 	self.interval = interval
@@ -142,10 +159,12 @@ function Pool:AdjustInterval(interval:number)
 end
 
 --[=[
+
 @within Pool
 This function adjusts the operation limit for each frame.
 @param limit number
 @return Pool
+
 ]=]
 function Pool:AdjustOperationLimit(limit:number)
 	self.operationLimit = limit
@@ -153,8 +172,10 @@ function Pool:AdjustOperationLimit(limit:number)
 end
 
 --[=[
+
 @within Pool
 This function destroys the Pool instance.
+	
 ]=]
 function Pool:Destroy()
 	self:Stop()

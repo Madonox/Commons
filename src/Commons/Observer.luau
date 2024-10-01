@@ -15,6 +15,12 @@ export type Observer = {
 	cleanup: (any) -> nil;
 }
 
+--[=[
+
+@class Observer
+The Observer class allows for the construction of tables with observational capabilities.
+
+]=]
 local Observer:Observer = {} :: Observer
 
 local OBSERVER_REF = {}
@@ -45,11 +51,14 @@ local ProxyFunctions = {
 }
 
 --[=[
-@function new
+
+@within Observer
+This function allows you to create a new observational table.
 @return {[any]:any} -- Returns a table with observational capabilities.
 
 :::note
 The returned data type is actually a `userdata`.  In order to performantly emit table read / write events, we need to use this setup.
+
 ]=]
 function Observer.new()
 	local readEmitters = {}
@@ -78,8 +87,11 @@ function Observer.new()
 end
 
 --[=[
-@function new
+
+@within Observer
+This function cleans up an observational table.
 @param proxy {[any]:any} -- The observational table you want to clean up.
+
 ]=]
 function Observer.cleanup(proxy)
 	local proxyTable = OBSERVER_REF[proxy]
