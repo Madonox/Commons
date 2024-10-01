@@ -77,44 +77,15 @@ function NettyServer._init()
 		NettyServer.Events = {}
 		NettyServer.EventIds = {}
 
-		local reliableOut = {} :: {[Player]: {any}}
-		local unreliableOut = {} :: {[Player]: {any}}
-
 		NettyServer.Outbound = {
-			reliable = reliableOut;
-			unreliable = unreliableOut;
+			reliable = {} :: {[Player]: {any}};
+			unreliable = {} :: {[Player]: {any}};
 		}
-
-		Players.PlayerAdded:Connect(function(player)
-			reliableOut[player] = {{},{},BufferInscriber.new()}
-			unreliableOut[player] = {{},{},BufferInscriber.new()}
-		end)
-		Players.PlayerRemoving:Connect(function(player)
-			table.clear(reliableOut[player][1])
-			table.clear(unreliableOut[player][1])
-
-			table.clear(reliableOut[player][2])
-			table.clear(unreliableOut[player][2])
-
-			reliableOut[player][3]:Destroy()
-			unreliableOut[player][3]:Destroy()
-
-			table.clear(reliableOut[player])
-			table.clear(unreliableOut[player])
-
-			reliableOut[player] = nil
-			unreliableOut[player] = nil
-		end)
 
 		-- built in sync event
 		NettyServer.RegisterEvent("_init",function(player,...)
 			NettyServer.FireClient(player,"_init",NettyServer.EventIds)
 		end)
-
-		ReliableChannel = Instance.new("RemoteEvent")
-		UnreliableChannel = Instance.new("UnreliableRemoteEvent")
-		ReliableChannel.OnServerEvent:Connect(InoundEventHandler)
-		UnreliableChannel.OnServerEvent:Connect(InoundEventHandler)
 	end
 end
 
@@ -195,14 +166,54 @@ local function ProcessOutboundPackets(playerSet:{[Player]:{any}},channel)
 	end
 end
 
+local function SafeAddPlayer(player)
+	local outbound = NettyServer.Outbound
+	if not outbound.reliable[player] then
+		outbound.reliable[player] = {{},{},BufferInscriber.new()}
+	end
+	if not outbound.unreliable[player] then
+		outbound.unreliable[player] = {{},{},BufferInscriber.new()}
+	end
+end
 function NettyServer.Start()
 	if not NettyServer.Started then
 		NettyServer.Started = true
+
+		-- Player packet tracking
+		local reliableOut = NettyServer.Outbound.reliable
+		local unreliableOut = NettyServer.Outbound.unreliable
+		Players.PlayerAdded:Connect(SafeAddPlayer)
+
+		for _,player in Players:GetPlayers() do
+			SafeAddPlayer(player)
+		end
+
+		Players.PlayerRemoving:Connect(function(player)
+			table.clear(reliableOut[player][1])
+			table.clear(unreliableOut[player][1])
+
+			table.clear(reliableOut[player][2])
+			table.clear(unreliableOut[player][2])
+
+			reliableOut[player][3]:Destroy()
+			unreliableOut[player][3]:Destroy()
+
+			table.clear(reliableOut[player])
+			table.clear(unreliableOut[player])
+
+			reliableOut[player] = nil
+			unreliableOut[player] = nil
+		end)
+
+		-- Actual network handling
+		ReliableChannel = Instance.new("RemoteEvent")
+		UnreliableChannel = Instance.new("UnreliableRemoteEvent")
+		ReliableChannel.OnServerEvent:Connect(InoundEventHandler)
+		UnreliableChannel.OnServerEvent:Connect(InoundEventHandler)
+
 		UnreliableChannel.Parent = script.Parent
 		ReliableChannel.Parent = script.Parent
 
-		local reliableOut = NettyServer.Outbound.reliable
-		local unreliableOut = NettyServer.Outbound.unreliable
 		OUTBOUND_CONNECTION = game:GetService("RunService").Heartbeat:Connect(function()
 			ProcessOutboundPackets(reliableOut,ReliableChannel)
 			ProcessOutboundPackets(unreliableOut,UnreliableChannel)

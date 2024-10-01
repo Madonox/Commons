@@ -155,7 +155,7 @@ end
     @param memorySize number -- The amount of memory (bytes) being written.
     @param dataType string -- The data type being inscribed.
     @param value number -- The value being inscribed.
-    @return {any}
+    @return Buffer
 ]=]
 function Buffer:Write(memorySize:number,dataType:string,value:number)
     buffer[dataType](self.buffer,self.pointer,value)
@@ -170,7 +170,7 @@ end
     @within Buffer
     @param memorySize number -- The amount of memory being read.
     @param dataType string -- The data type being read.
-    @return {any}
+    @return any
 ]=]
 function Buffer:Read(memorySize:number,dataType:string)
     local response = buffer[dataType](self.buffer,self.pointer)
@@ -184,10 +184,11 @@ end
     @method IncrementPointer
     @within Buffer
     @param amount number -- How much to increment the pointer by.
-    @return {any}
+    @return Buffer
 ]=]
 function Buffer:IncrementPointer(amount:number)
     self.pointer += amount
+	return self
 end
 
 --[=[
@@ -196,7 +197,7 @@ end
     @method SetTemplate
     @within Buffer
     @param template {string} -- The new template.
-    @return {any}
+    @return Buffer
 ]=]
 function Buffer:SetTemplate(template:{string})
     self.template = template
@@ -208,7 +209,7 @@ end
     
     @method MakeNewBuffer
     @within Buffer
-    @return {any}
+    @return Buffer
 ]=]
 function Buffer:MakeNewBuffer()
     self.buffer = buffer.create(self.size)
@@ -221,6 +222,7 @@ end
     @method ImportBuffer
     @within Buffer
     @param buffer buffer -- The buffer being imported.
+	@return Buffer
 ]=]
 function Buffer:ImportBuffer(buffer: buffer)
     self.buffer = buffer
@@ -232,7 +234,7 @@ end
     
     @method Destroy
     @within Buffer
-    @return {any}
+    @return nil
 ]=]
 function Buffer:Destroy()
     table.clear(self.template)
@@ -286,7 +288,7 @@ end
     @method IncrementPointer
     @within BufferInscriber
     @param amount number -- How much to increment the pointer by.
-    @return {any}
+    @return BufferInscriber
 ]=]
 function BufferInscriber:IncrementPointer(amount:number)
     self.pointer += amount
@@ -299,7 +301,7 @@ end
     @method IncrementPointer
     @within BufferInscriber
     @param amount number -- What to set the pointer to.
-    @return {any}
+    @return BufferInscriber
 ]=]
 function BufferInscriber:SetPointer(amount:number)
     self.pointer = amount
@@ -314,7 +316,7 @@ end
     @param memorySize number -- The amount of memory (bytes) being written.
     @param dataType string -- The data type being inscribed.
     @param value number -- The value being inscribed.
-    @return {any}
+    @return BufferInscriber
 ]=]
 function BufferInscriber:Write(memorySize:number,dataType:string,value:number)
     buffer[dataType](self.buffer,self.pointer,value)
@@ -329,7 +331,7 @@ end
     @within BufferInscriber
     @param memorySize number -- The amount of memory being read.
     @param dataType string -- The data type being read.
-    @return {any}
+    @return any
 ]=]
 function BufferInscriber:Read(memorySize:number,dataType:string)
     local response = buffer[dataType](self.buffer,self.pointer)
@@ -344,7 +346,7 @@ end
     @within BufferInscriber
     @param dataType string -- What DataType to read.
     @param offset number? -- A starting pointer.  If none is supplied, it will use the current pointer.
-    @return {any}
+    @return any
 ]=]
 function BufferInscriber:ReadType(dataType:string,offset:number?)
     if offset then
@@ -361,7 +363,7 @@ end
     @within BufferInscriber
     @param dataType string -- What DataType to write.
     @param data any -- The data to write into the buffer.
-    @return {any}
+    @return BufferInscriber
 ]=]
 function BufferInscriber:WriteType(dataType:string,data:any)
     BUFFER_TYPES[dataType][3].Serialize(self,data)
@@ -374,6 +376,7 @@ end
     @method SetBuffer
     @within BufferInscriber
     @param buffer buffer -- The buffer being imported.
+	@return BufferInscriber
 ]=]
 function BufferInscriber:SetBuffer(buffer:buffer)
     self.buffer = buffer

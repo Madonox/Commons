@@ -55,9 +55,6 @@ function NettyClient._init()
 			EventsLoaded = true
 			NettyClient._startNetworkRelay() -- call again in case the first attempt failed
 		end)
-
-		ReliableChannel = script.Parent:WaitForChild("RemoteEvent")
-		UnreliableChannel = script.Parent:WaitForChild("UnreliableRemoteEvent")
 	end
 end
 
@@ -158,6 +155,9 @@ end
 function NettyClient.Start()
 	if not NettyClient.Started then
 		NettyClient.Started = true
+
+		ReliableChannel = script.Parent:WaitForChild("RemoteEvent")
+		UnreliableChannel = script.Parent:WaitForChild("UnreliableRemoteEvent")
 
 		-- force gen get remote
 		OutboundInscriber:SetBuffer(buffer.create(3))
