@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[404],{7636:e=>{e.exports=JSON.parse('[{"type":"link","href":"/api/Buffer","label":"\u200bBuffer"},{"type":"link","href":"/api/BufferInscriber","label":"\u200bBuffer\u200bInscriber"}]')}}]);
