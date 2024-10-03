@@ -16,7 +16,7 @@ export type NettyServer = {
 	FireList: ({Player},any,...any) -> nil;
 	FireListUnreliable: ({Player},any,...any) -> nil;
 
-	RegisterEvent: (any,(Player,...any) -> nil) -> nil;
+	RegisterEvent: (any,(Player,...any) -> nil?) -> nil;
 	SpawnEvent: (Player,any,...any) -> nil;
 
 	Started: boolean;
@@ -234,9 +234,12 @@ function NettyServer.SpawnEvent(player:Player,eventType:any,...:any)
 	end
 end
 
-function NettyServer.RegisterEvent(id:any,callback:(Player,...any) -> nil)
+local function BLANK_FUNCTION()
+	
+end
+function NettyServer.RegisterEvent(id:any,callback:(Player,...any) -> nil?)
 	if (not NettyServer.Events[id]) and (not NettyServer.Started) then
-		NettyServer.Events[id] = callback
+		NettyServer.Events[id] = callback or BLANK_FUNCTION
 		table.insert(NettyServer.EventIds,id)
 		return
 	end
