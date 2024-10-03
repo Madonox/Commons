@@ -7,18 +7,24 @@ export type NettyServer = {
 	_init: () -> nil;
 	Start: () -> nil;
 
-	SpawnEvent: (Player,any,...any) -> nil;
 	FireClient: (Player,any,...any) -> nil;
+	FireClientUnreliable: (Player,any,...any) -> nil;
+
 	FireAllClients: (any,...any) -> nil;
+	FireAllClientsUnreliable: (any,...any) -> nil;
+
 	FireList: ({Player},any,...any) -> nil;
+	FireListUnreliable: ({Player},any,...any) -> nil;
+
 	RegisterEvent: (any,(Player,...any) -> nil) -> nil;
+	SpawnEvent: (Player,any,...any) -> nil;
 
 	Started: boolean;
 	Events: {[any]: (Player,...any) -> nil};
 	EventIds: {any};
 	Outbound: {
-		reliable: {Player:{any}};
-		unreliable: {Player:{any}};
+		reliable: {[Player]:{any}};
+		unreliable: {[Player]:{any}};
 	};
 }
 
@@ -215,15 +221,17 @@ function NettyServer.Start()
 		ReliableChannel.Parent = script.Parent
 
 		OUTBOUND_CONNECTION = game:GetService("RunService").Heartbeat:Connect(function()
-			ProcessOutboundPackets(reliableOut,ReliableChannel)
 			ProcessOutboundPackets(unreliableOut,UnreliableChannel)
+			ProcessOutboundPackets(reliableOut,ReliableChannel)
 		end)
 	end
 end
 
 function NettyServer.SpawnEvent(player:Player,eventType:any,...:any)
-	--local event = NettyServer.Events[eventType]
-	NettyServer.Events[eventType](player,...)
+	local event = NettyServer.Events[eventType]
+	if event then
+		event(player,...)
+	end
 end
 
 function NettyServer.RegisterEvent(id:any,callback:(Player,...any) -> nil)
@@ -284,6 +292,9 @@ function NettyServer.FireAllClients(eventId:any,...:any)
 		table.insert(profile[1],bufferSize)
 		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
 	end
+
+	table.clear(bufferSize)
+	table.clear(tableArgs)
 end
 
 function NettyServer.FireList(players:{Player},eventId:any,...:any)
@@ -311,6 +322,92 @@ function NettyServer.FireList(players:{Player},eventId:any,...:any)
 		table.insert(profile[1],bufferSize)
 		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
 	end
+
+	table.clear(bufferSize)
+	table.clear(tableArgs)
+end
+
+function NettyServer.FireClientUnreliable(player:Player,eventId:any,...:any)
+	local bufferArgs = {}
+	local bufferSize = 2
+	local tableArgs = {}
+
+	for index,arg in {...} do
+		local bType = Buffer.ResolveType(arg)
+		if bType then
+			bufferSize += Buffer.SizeOf(bType) + 2
+			bufferArgs[index] = arg
+			continue
+		end
+
+		bufferArgs[index] = INSTANCE_MARKER
+		bufferSize += 2
+		tableArgs[index] = arg
+	end
+
+	local profile = NettyServer.Outbound.unreliable[player]
+	table.insert(profile[1],bufferSize)
+	table.insert(profile[2],{table.find(NettyServer.EventIds,eventId),bufferArgs,tableArgs})
+end
+
+function NettyServer.FireAllClientsUnreliable(eventId:any,...:any)
+	local bufferArgs = {}
+	local bufferSize = 2
+	local tableArgs = {}
+
+	for index,arg in {...} do
+		local bType = Buffer.ResolveType(arg)
+		if bType then
+			bufferSize += Buffer.SizeOf(bType) + 2
+			bufferArgs[index] = arg
+			continue
+		end
+
+		bufferArgs[index] = INSTANCE_MARKER
+		bufferSize += 2
+		tableArgs[index] = arg
+	end
+
+	-- less calculations this way
+	local ref = table.find(NettyServer.EventIds,eventId)
+	for _,player in Players:GetPlayers() do
+		local profile = NettyServer.Outbound.unreliable[player]
+		table.insert(profile[1],bufferSize)
+		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
+	end
+
+	table.clear(bufferSize)
+	table.clear(tableArgs)
+end
+
+function NettyServer.FireListUnreliable(players:{Player},eventId:any,...:any)
+	local bufferArgs = {}
+	local bufferSize = 2
+	local tableArgs = {}
+
+	for index,arg in {...} do
+		local bType = Buffer.ResolveType(arg)
+		if bType then
+			bufferSize += Buffer.SizeOf(bType) + 2
+			bufferArgs[index] = arg
+			continue
+		end
+
+		bufferArgs[index] = INSTANCE_MARKER
+		bufferSize += 2
+		tableArgs[index] = arg
+	end
+
+	-- less calculations this way
+	local ref = table.find(NettyServer.EventIds,eventId)
+	for _,player in players do
+		local profile = NettyServer.Outbound.unreliable[player]
+		table.insert(profile[1],bufferSize)
+		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
+	end
+
+	table.clear(bufferSize)
+	table.clear(tableArgs)
 end
 
 return NettyServer

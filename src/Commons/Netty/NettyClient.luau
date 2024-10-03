@@ -1,4 +1,3 @@
-local RunService = game:GetService("RunService")
 --!native
 --!optimize 2
 -- Madonox
@@ -11,6 +10,7 @@ export type NettyClient = {
 	SpawnEvent: (any,...any) -> nil;
 	RegisterEvent: (any,(...any) -> nil) -> nil;
 	FireServer: (any,...any) -> nil;
+	FireServerUnreliable: (any,...any) -> nil;
 
 	Events: {[any]:(...any) -> nil};
 	EventIds: {[number]: any};
@@ -21,7 +21,13 @@ export type NettyClient = {
 	Started: boolean;
 }
 
-local NettyClient:NettyClient = {}
+--[=[
+@class NettyClient
+NettyClient is the client module for the Netty framework.  It is used to handle all forms of inbound and outbound traffic.
+NettyClient serializes any data it can into buffers.  Due to the nature of how Netty sends remote data, this approach to networking results in a significant decrease in outbound and inbound traffic, as well as lowering ping.
+]=]
+local NettyClient:NettyClient = {} :: NettyClient
+
 local Buffer = require(script.Parent.Parent:WaitForChild("Buffer"))
 
 local ReliableChannel:RemoteEvent
@@ -37,6 +43,11 @@ BUFFER FORMAT:
 local Initialized = false
 local EventsLoaded = false
 
+--[=[
+@within NettyClient
+@private
+This function handles NettyClient initialization.  Since both the Server and Client modules exist under ReplicatedStorage, we use this function to prevent the server from constructing a client as well.
+]=]
 function NettyClient._init()
 	if not Initialized then
 		Initialized = true
@@ -152,6 +163,10 @@ local function ProcessOutboundPackets(packetSet:{any},channel)
 	end
 end
 
+--[=[
+@within NettyClient
+This function starts the network inbound and outbound handler.  Additionally, once NettyClient is started, you can begin to send and receive data to and from the server.
+]=]
 function NettyClient.Start()
 	if not NettyClient.Started then
 		NettyClient.Started = true
@@ -180,15 +195,20 @@ end
 local RelayActive = false
 local RelayCallbackThreads = {}
 
+--[=[
+@within NettyClient
+@private
+This function spawns the Netty outbound network connection.
+]=]
 function NettyClient._startNetworkRelay()
 	if EventsLoaded and not RelayActive then
 		RelayActive = true
 		local reliable = NettyClient.Outbound.reliable
 		local unreliable = NettyClient.Outbound.unreliable
 
-		RunService.Heartbeat:Connect(function()
-			ProcessOutboundPackets(reliable,ReliableChannel)
+		game:GetService("RunService").Heartbeat:Connect(function()
 			ProcessOutboundPackets(unreliable,UnreliableChannel)
+			ProcessOutboundPackets(reliable,ReliableChannel)
 		end)
 
 		for _,thread in RelayCallbackThreads do
@@ -198,14 +218,52 @@ function NettyClient._startNetworkRelay()
 	end
 end
 
+--[=[
+@within NettyClient
+@param id any -- The event id to bind to.
+@param callback (...any) -> nil -- The callback function to run when this event is triggered.
+This function registers an event locally.  This is used when the server wants to send data to the client.  Events can only have **one** callback.
+
+:::info
+Events also need to be registered on the server, even if they have no callback.  Since Netty uses an identity based system, the client and server need to share event ids.
+]=]
 function NettyClient.RegisterEvent(id:any,callback:(...any) -> nil)
 	NettyClient.Events[id] = callback
 end
 
+--[=[
+@within NettyClient
+@param eventType any -- The event id to trigger.
+@param ... any -- The arguments to pass to the event.
+This function spawns an event in the current thread.
+
+:::note
+This function is mainly used internally, so it doesn't offer much configuration / outside influence.
+]=]
 function NettyClient.SpawnEvent(eventType:any,...:any)
-	NettyClient.Events[eventType](...)
+	local event = NettyClient.Events[eventType]
+	if event then
+		event(...)
+	end
 end
 
+--[=[
+@within NettyClient
+@param eventId any -- The event id to trigger.
+@param ... any -- The arguments to pass to the server.
+This function fires a reliable remote event with proper data serialization to the server.
+
+:::note
+Events aren't fire instantly.  They're queued into an outbound pool, and a maximum of 255 events of each type(unreliable, reliable) are fired to the server at once per Heartbeat (RunService.Heartbeat).
+This function supports all data types, even if they aren't able to be serialized into buffers.
+Example:
+```lua
+local NettyClient = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Client
+NettyClient.Start()
+
+NettyClient.FireServer("my event", 123, CFrame.identity,"abc", workspace.MyPart) -- All of these arguments will be passed to the server.
+```
+]=]
 function NettyClient.FireServer(eventId:any,...:any)
 	if NettyClient.Started then
 		if not RelayActive then
@@ -230,6 +288,55 @@ function NettyClient.FireServer(eventId:any,...:any)
 		end
 
 		local channel = NettyClient.Outbound.reliable
+		table.insert(channel[1],bufferSize)
+		--channel[1] += bufferSize
+		table.insert(channel[2],{table.find(NettyClient.EventIds,eventId),bufferArgs,tableArgs})
+		return
+	end
+	error("Cannot call FireServer until NettyClient has been started!")
+end
+
+--[=[
+@within NettyClient
+@param eventId any -- The event id to trigger.
+@param ... any -- The arguments to pass to the server.
+This function fires an unreliable remote event with proper data serialization to the server.
+
+:::note
+Events aren't fire instantly.  They're queued into an outbound pool, and a maximum of 255 events of each type(unreliable, reliable) are fired to the server at once per Heartbeat (RunService.Heartbeat).
+This function supports all data types, even if they aren't able to be serialized into buffers.
+Example:
+```lua
+local NettyClient = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Client
+NettyClient.Start()
+
+NettyClient.FireServerUnreliable("my event", 123, CFrame.identity,"abc", workspace.MyPart) -- All of these arguments will be passed to the server.
+```
+]=]
+function NettyClient.FireServerUnreliable(eventId:any,...:any)
+	if NettyClient.Started then
+		if not RelayActive then
+			table.insert(RelayCallbackThreads,coroutine.running())
+			coroutine.yield()
+		end
+		local bufferArgs = {}
+		local bufferSize = 2
+		local tableArgs = {}
+
+		for index,arg in {...} do
+			local bType = Buffer.ResolveType(arg)
+			if bType then
+				bufferSize += Buffer.SizeOf(bType) + 2
+				bufferArgs[index] = arg
+				continue
+			end
+
+			bufferArgs[index] = INSTANCE_MARKER
+			bufferSize += 2
+			tableArgs[index] = arg
+		end
+
+		local channel = NettyClient.Outbound.unreliable
 		table.insert(channel[1],bufferSize)
 		--channel[1] += bufferSize
 		table.insert(channel[2],{table.find(NettyClient.EventIds,eventId),bufferArgs,tableArgs})

@@ -274,6 +274,9 @@ BufferInscriber.__index = BufferInscriber
 	@within BufferInscriber
 	@param instance buffer? -- The buffer to initialize the class with.
 	@return BufferInscriber -- Returns an instance of the BufferInscriber class.
+
+	:::info
+	The BufferInscriber class is much more low-level than the Buffer class.  Using this class requires significantly more effort, as it does not handle everything that the Buffer class normally handles.
 ]=]
 function BufferInscriber.new(instance:buffer?)
 	return setmetatable({

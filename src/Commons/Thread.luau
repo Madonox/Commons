@@ -2,72 +2,72 @@
 -- 2024
 
 --[=[
-@interface PoolOptions
-@within Pool
+@interface ThreadOptions
+@within Thread
 .Interval number? -- The interval to run operations at (default 0.01).
 .OperationLimit number? -- The number of operations to run each step (default 5).
 ]=]
-export type PoolOptions = {
+export type ThreadOptions = {
 	Interval: number?;
 	OperationLimit: number?;
 }
 
-export type Pool = {
-	new: (PoolOptions) -> Pool;
+export type Thread = {
+	new: (ThreadOptions) -> Thread;
 
-	Spawn: (Pool) -> Pool;
-	Stop: (Pool) -> Pool;
-	QueueOperation: (Pool, (number?,Pool?) -> nil) -> Pool;
-	AdjustInterval: (Pool, number) -> Pool;
-	AdjustOperationLimit: (Pool, number) -> Pool;
-	ThreadActive: (Pool) -> boolean;
-	GetCurrentId: (Pool) -> string?;
+	Spawn: (Thread) -> Thread;
+	Stop: (Thread) -> Thread;
+	QueueOperation: (Thread, (number?,Thread?) -> nil) -> Thread;
+	AdjustInterval: (Thread, number) -> Thread;
+	AdjustOperationLimit: (Thread, number) -> Thread;
+	ThreadActive: (Thread) -> boolean;
+	GetCurrentId: (Thread) -> string?;
 
-	Destroy: (Pool) -> nil;
+	Destroy: (Thread) -> nil;
 
 	interval: number;
 	operationLimit: number;
-	operationQueue: {(number?,Pool?) -> nil};
+	operationQueue: {(number?,Thread?) -> nil};
 	currentThread: thread?;
 
-	__index: Pool;
+	__index: Thread;
 }
 
 --[=[
 
-@class Pool
-The Pool class is used to handle all forms of operation management.  Additionally, it manages the thread being used to run all of the queued operations.
+@class Thread
+The Thread class is used to handle all forms of operation management.  Additionally, it manages the thread being used to run all of the queued operations.
 
 ]=]
-local Pool:Pool = {} :: Pool
-Pool.__index = Pool
+local Thread:Thread = {} :: Thread
+Thread.__index = Thread
 
 --[=[
 
 @function new
-@within Pool
-This function creates a new instance of the Pool class.
-@param options PoolOptions -- The initial configuration for the class.
-@return Pool
+@within Thread
+This function creates a new instance of the Thread class.
+@param options ThreadOptions -- The initial configuration for the class.
+@return Thread
 
 ]=]
-function Pool.new(options:PoolOptions)
+function Thread.new(options:ThreadOptions)
 	return setmetatable({
 		interval = options.Interval or .01;
 		operationLimit = options.OperationLimit or 5;
 		operationQueue = {};
 		currentThread = nil;
-	},Pool)
+	},Thread)
 end
 
 --[=[
 
-@within Pool
+@within Thread
 This function spawns a thread to process operations.  There can only be one thread running at once.
-@return Pool
+@return Thread
 
 ]=]
-function Pool:Spawn()
+function Thread:Spawn()
 	if not self.currentThread then
 		local thread = coroutine.create(function()
 			local queue = self.operationQueue
@@ -84,18 +84,18 @@ function Pool:Spawn()
 		return self
 	end
 
-	warn("Cannot spawn pool!  There is already a running thread!")
+	warn("Cannot spawn Thread!  There is already a running thread!")
 	return self
 end
 
 --[=[
 
-@within Pool
+@within Thread
 This function stops the current thread.
-@return Pool
+@return Thread
 
 ]=]
-function Pool:Stop()
+function Thread:Stop()
 	local thread = self.currentThread
 	if thread then
 		coroutine.close(thread)
@@ -106,12 +106,12 @@ end
 
 --[=[
 
-@within Pool
-This function returns true if the Pool currently has a working thread.
+@within Thread
+This function returns true if the Thread currently has a working thread.
 @return boolean
 
 ]=]
-function Pool:ThreadActive()
+function Thread:ThreadActive()
 	if self.currentThread then
 		return true
 	end
@@ -120,12 +120,12 @@ end
 
 --[=[
 
-@within Pool
+@within Thread
 This function returns the current thread id if there is a working thread.
 @return string?
 
 ]=]
-function Pool:GetCurrentId()
+function Thread:GetCurrentId()
 	local thread = self.currentThread
 	if thread then
 		return tostring(thread)
@@ -134,54 +134,54 @@ end
 
 --[=[
 
-@within Pool
-This function queues a function to be executed by the pool.
-@param operation (number?, Pool?) -> nil
-@return Pool
+@within Thread
+This function queues a function to be executed by the Thread.
+@param operation (number?, Thread?) -> nil
+@return Thread
 
 ]=]
-function Pool:QueueOperation(operation:(number?,Pool?) -> nil)
+function Thread:QueueOperation(operation:(number?,Thread?) -> nil)
 	table.insert(self.operationQueue,operation)
 	return self
 end
 
 --[=[
 
-@within Pool
-This function adjusts the interval at which the pool executes operations at.
+@within Thread
+This function adjusts the interval at which the Thread executes operations at.
 @param interval number
-@return Pool
+@return Thread
 
 ]=]
-function Pool:AdjustInterval(interval:number)
+function Thread:AdjustInterval(interval:number)
 	self.interval = interval
 	return self
 end
 
 --[=[
 
-@within Pool
+@within Thread
 This function adjusts the operation limit for each frame.
 @param limit number
-@return Pool
+@return Thread
 
 ]=]
-function Pool:AdjustOperationLimit(limit:number)
+function Thread:AdjustOperationLimit(limit:number)
 	self.operationLimit = limit
 	return self
 end
 
 --[=[
 
-@within Pool
-This function destroys the Pool instance.
+@within Thread
+This function destroys the Thread instance.
 	
 ]=]
-function Pool:Destroy()
+function Thread:Destroy()
 	self:Stop()
 	table.clear(self.operationQueue)
 	table.clear(self)
 	setmetatable(self,nil)
 end
 
-return Pool
+return Thread
