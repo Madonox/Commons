@@ -259,13 +259,14 @@ export type BufferInscriber = {
 
 	pointer: number;
 	buffer: buffer;
+	__index: BufferInscriber;
 }
 
 --[=[
 	@class BufferInscriber
 	Allows for a more manual approach to buffer serialization / deserialization.  It requires some manual byte math, and buffer construction.
 ]=]
-local BufferInscriber = {}
+local BufferInscriber:BufferInscriber = {} :: BufferInscriber
 BufferInscriber.__index = BufferInscriber
 
 --[=[
@@ -381,7 +382,7 @@ end
 	@param buffer buffer -- The buffer being imported.
 	@return BufferInscriber
 ]=]
-function BufferInscriber:SetBuffer(buffer:buffer)
+function BufferInscriber:SetBuffer(buffer:buffer?)
 	self.buffer = buffer
 	return self
 end
@@ -481,4 +482,5 @@ local BufferLibrary:BufferLibrary = {
 	IdToType = IdToType;
 	ResolveType = ResolveType;
 }
+
 return BufferLibrary

@@ -16,7 +16,7 @@ type Commons = {
 local Commons:Commons = {
     Netty = Netty;
     Buffer = Buffer;
-	Pool = Thread;
+	Thread = Thread;
 	Observer = Observer;
 }
 

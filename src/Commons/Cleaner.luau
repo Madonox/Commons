@@ -2,7 +2,7 @@
 -- 2024
 
 export type Cleaner = {
-	Cleanup: (any) -> nil;
+	Cleanup: (any,string?) -> nil;
 	CleanupTable: ({[any]: any}) -> nil;
 }
 
@@ -10,7 +10,7 @@ export type Cleaner = {
 @class Cleaner
 The Cleaner class provides a set of functions for cleaning up instances, and tables.
 ]=]
-local Cleaner:Cleaner = {}
+local Cleaner:Cleaner = {} :: Cleaner
 
 local CleanupFunctions = {
 	Instance = function(object)
@@ -89,13 +89,14 @@ export type TrackedCleaner = {
 	Remove: (TrackedCleaner, any) -> TrackedCleaner;
 
 	Destroy: (TrackedCleaner) -> nil;
+	__index: TrackedCleaner;
 }
 
 --[=[
 @class TrackedCleaner
 The TrackedCleaner class allows for real time tracking and cleaning of variables.
 ]=]
-local TrackedCleaner:TrackedCleaner = {}
+local TrackedCleaner:TrackedCleaner = {} :: TrackedCleaner
 TrackedCleaner.__index = TrackedCleaner
 
 --[=[
