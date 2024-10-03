@@ -1,6 +1,6 @@
-local Pool = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Pool
+local Thread = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Thread
 
-local operationPool = Pool.new({
+local operationPool = Thread.new({
 	Interval = .5;
 	OperationLimit = 3;
 })
