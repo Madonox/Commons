@@ -6,7 +6,9 @@ NettyServer.RegisterEvent("count number")
 NettyServer.Start()
 
 task.spawn(function()
-	while task.wait(1/60) do
-		NettyServer.FireAllClients("count number",1)
+	while task.wait(1) do
+		for i = 1,200 do
+			NettyServer.FireAllClients("count number",1)
+		end
 	end
 end)

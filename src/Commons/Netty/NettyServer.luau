@@ -296,7 +296,7 @@ function NettyServer.FireAllClients(eventId:any,...:any)
 		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
 	end
 
-	table.clear(bufferSize)
+	table.clear(bufferArgs)
 	table.clear(tableArgs)
 end
 
@@ -326,7 +326,7 @@ function NettyServer.FireList(players:{Player},eventId:any,...:any)
 		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
 	end
 
-	table.clear(bufferSize)
+	table.clear(bufferArgs)
 	table.clear(tableArgs)
 end
 
@@ -379,7 +379,7 @@ function NettyServer.FireAllClientsUnreliable(eventId:any,...:any)
 		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
 	end
 
-	table.clear(bufferSize)
+	table.clear(bufferArgs)
 	table.clear(tableArgs)
 end
 
@@ -409,7 +409,7 @@ function NettyServer.FireListUnreliable(players:{Player},eventId:any,...:any)
 		table.insert(profile[2],{ref,table.clone(bufferArgs),table.clone(tableArgs)}) -- clone for manual gc
 	end
 
-	table.clear(bufferSize)
+	table.clear(bufferArgs)
 	table.clear(tableArgs)
 end
 
