@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="plugin-moonwave plugin-id-moonwave">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v2.3.1">
+<title data-rh="true">NettyClient | Commons</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://Madonox.github.io/Commons/api/NettyClient"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="NettyClient | Commons"><meta data-rh="true" name="description" content="NettyClient is the client module for the Netty framework.  It is used to handle all forms of inbound and outbound traffic.
+NettyClient serializes any data it can into buffers.  Due to the nature of how Netty sends remote data, this approach to networking results in a significant decrease in outbound and inbound traffic, as well as lowering ping."><meta data-rh="true" property="og:description" content="NettyClient is the client module for the Netty framework.  It is used to handle all forms of inbound and outbound traffic.
+NettyClient serializes any data it can into buffers.  Due to the nature of how Netty sends remote data, this approach to networking results in a significant decrease in outbound and inbound traffic, as well as lowering ping."><link data-rh="true" rel="canonical" href="https://Madonox.github.io/Commons/api/NettyClient"><link data-rh="true" rel="alternate" href="https://Madonox.github.io/Commons/api/NettyClient" hreflang="en"><link data-rh="true" rel="alternate" href="https://Madonox.github.io/Commons/api/NettyClient" hreflang="x-default"><link rel="stylesheet" href="/Commons/assets/css/styles.19a5646f.css">
+<link rel="preload" href="/Commons/assets/js/runtime~main.d3c31206.js" as="script">
+<link rel="preload" href="/Commons/assets/js/main.96593064.js" as="script">
+</head>
+<body class="navigation-with-keyboard">
+<script>!function(){function e(e){document.documentElement.setAttribute("data-theme",e)}var t=function(){var e=null;try{e=localStorage.getItem("theme")}catch(e){}return e}();null!==t?e(t):window.matchMedia("(prefers-color-scheme: dark)").matches?e("dark"):(window.matchMedia("(prefers-color-scheme: light)").matches,e("light"))}()</script><div id="__docusaurus">
+<div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="navbar navbar--fixed-top"><div class="navbar__inner"><div class="navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/Commons/"><b class="navbar__title text--truncate">Commons</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/Commons/api/">API</a></div><div class="navbar__items navbar__items--right"><a href="https://github.com/Madonox/Commons" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-hidden="true" viewBox="0 0 24 24" class="iconExternalLink_nPIU"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"></path></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="Switch between dark and light mode (currently light mode)" aria-label="Switch between dark and light mode (currently light mode)" aria-live="polite"><svg viewBox="0 0 24 24" width="24" height="24" class="lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" class="darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg></button></div><div class="searchBox_ZlJk"><div class="navbar__search"><span aria-label="expand searchbar" role="button" class="search-icon" tabindex="0"></span><input type="search" id="search_input_react" placeholder="Loading..." aria-label="Search" class="navbar__search-input search-bar" disabled=""></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="docusaurus_skipToContent_fallback" class="main-wrapper mainWrapper_z2l0 docPageContainer_wNNk"><div class="docPage_Dpn1"><div class="docSidebarContainer_o_re"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/Commons/api/Buffer">​Buffer</a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/Commons/api/BufferInscriber">​Buffer​Inscriber</a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" href="/Commons/api/NettyClient">​Netty​Client</a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/Commons/api/Observer">​Observer</a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/Commons/api/Thread">​Thread</a></li></ul></nav></div></div><main class="docMainContainer_HJE1"><div class="container padding-vert--lg"><div class="row"><div class="col docItemCol_MU3C"><div class="docItemContainer_Wv98"><article><div class="member_J0w1 markdown"><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_oUs_"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><header><h1 class="docTitle_mZRt" style="text-decoration:none"><span style="display:inline-block">Netty</span><span style="display:inline-block">Client</span></h1><div class="luaClassTags_EipM"></div><label class="privateToggle_lmfE"><span class="privateCheckboxContainer_psRa"><input type="checkbox" class="privateCheckboxInternal_IKP2" name="checkbox"><span class="privateCheckboxControl_Ov8U"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="3" d="M4 11.91l5.37 5.37L19.79 5.59"></path></svg></span></span><span class="privateCheckboxLabel_Vmvs">Show Private</span></label><div>
+<p>
+  NettyClient is the client module for the Netty framework. It is used to handle all forms of inbound and outbound traffic.
+  NettyClient serializes any data it can into buffers. Due to the nature of how Netty sends remote data, this approach to networking results in a significant decrease in outbound and inbound traffic, as well as lowering ping.
+</p>
+</div></header><h2 class="anchor anchorWithStickyNavbar_LWe7" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorWithStickyNavbar_LWe7" id="Start"><code style="text-decoration:none">Start</code><a href="#Start" class="hash-link" aria-label="Direct link to Start" title="Direct link to Start">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/Madonox/Commons/blob/master/src/Commons/Netty/NettyClient.luau#L170"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>NettyClient<!-- -->.</code><code class="green_DgR4">Start</code><code>(</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>This function starts the network inbound and outbound handler. Additionally, once NettyClient is started, you can begin to send and receive data to and from the server.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorWithStickyNavbar_LWe7" id="RegisterEvent"><code style="text-decoration:none">RegisterEvent</code><a href="#RegisterEvent" class="hash-link" aria-label="Direct link to RegisterEvent" title="Direct link to RegisterEvent">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/Madonox/Commons/blob/master/src/Commons/Netty/NettyClient.luau#L230"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>NettyClient<!-- -->.</code><code class="green_DgR4">RegisterEvent</code><code>(</code><div class="inset_uKQm"><div><code>id<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+<p>The event id to bind to.</p>
+</span></span></div><div><code>callback<!-- -->: </code><code class="purple_ieR2">(</code><code class="blue_P4bS">...any</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="blue_P4bS">nil</code><span class="inlineDescription_G7Er">-- <span>
+<p>The callback function to run when this event is triggered.</p>
+</span></span></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>This function registers an event locally. This is used when the server wants to send data to the client. Events can only have <strong>one</strong> callback.</p>
+<div class="admonition admonition-info alert alert--info">
+  <div class="admonition-heading">
+    <h5><span class="admonition-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16">
+          <path d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path>
+        </svg></span>info</h5>
+  </div>
+  <div class="admonition-content">
+    <p>Events also need to be registered on the server, even if they have no callback. Since Netty uses an identity based system, the client and server need to share event ids.</p>
+  </div>
+</div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorWithStickyNavbar_LWe7" id="SpawnEvent"><code style="text-decoration:none">SpawnEvent</code><a href="#SpawnEvent" class="hash-link" aria-label="Direct link to SpawnEvent" title="Direct link to SpawnEvent">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/Madonox/Commons/blob/master/src/Commons/Netty/NettyClient.luau#L243"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>NettyClient<!-- -->.</code><code class="green_DgR4">SpawnEvent</code><code>(</code><div class="inset_uKQm"><div><code>eventType<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+<p>The event id to trigger.</p>
+</span></span></div><div><code>...<!-- -->: </code><code class="blue_P4bS">any</code><span class="inlineDescription_G7Er">-- <span>
+<p>The arguments to pass to the event.</p>
+</span></span></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>This function spawns an event in the current thread.</p>
+<div class="admonition admonition-note alert alert--secondary">
+  <div class="admonition-heading">
+    <h5><span class="admonition-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16">
+          <path d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path>
+        </svg></span>note</h5>
+  </div>
+  <div class="admonition-content">
+    <p>This function is mainly used internally, so it doesn't offer much configuration / outside influence.</p>
+  </div>
+</div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorWithStickyNavbar_LWe7" id="FireServer"><code style="text-decoration:none">FireServer</code><a href="#FireServer" class="hash-link" aria-label="Direct link to FireServer" title="Direct link to FireServer">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/Madonox/Commons/blob/master/src/Commons/Netty/NettyClient.luau#L267"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>NettyClient<!-- -->.</code><code class="green_DgR4">FireServer</code><code>(</code><div class="inset_uKQm"><div><code>eventId<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+<p>The event id to trigger.</p>
+</span></span></div><div><code>...<!-- -->: </code><code class="blue_P4bS">any</code><span class="inlineDescription_G7Er">-- <span>
+<p>The arguments to pass to the server.</p>
+</span></span></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>This function fires a reliable remote event with proper data serialization to the server.</p>
+<div class="admonition admonition-note alert alert--secondary">
+  <div class="admonition-heading">
+    <h5><span class="admonition-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16">
+          <path d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path>
+        </svg></span>note</h5>
+  </div>
+  <div class="admonition-content">
+    <p>
+      Events aren't fire instantly. They're queued into an outbound pool, and a maximum of 255 events of each type(unreliable, reliable) are fired to the server at once per Heartbeat (RunService.Heartbeat).
+      This function supports all data types, even if they aren't able to be serialized into buffers.
+      Example:
+    </p>
+    <pre class="language-lua"><code class="language-lua"><span class="token keyword">local</span> NettyClient <span class="token operator">=</span> <span class="token function">require</span><span class="token punctuation">(</span>game<span class="token punctuation">:</span><span class="token function">GetService</span><span class="token punctuation">(</span><span class="token string">"ReplicatedStorage"</span><span class="token punctuation">)</span><span class="token punctuation">:</span><span class="token function">WaitForChild</span><span class="token punctuation">(</span><span class="token string">"Commons"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>Netty<span class="token punctuation">.</span>Client
+NettyClient<span class="token punctuation">.</span><span class="token function">Start</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+NettyClient<span class="token punctuation">.</span><span class="token function">FireServer</span><span class="token punctuation">(</span><span class="token string">"my event"</span><span class="token punctuation">,</span> <span class="token number">123</span><span class="token punctuation">,</span> CFrame<span class="token punctuation">.</span>identity<span class="token punctuation">,</span><span class="token string">"abc"</span><span class="token punctuation">,</span> workspace<span class="token punctuation">.</span>MyPart<span class="token punctuation">)</span> <span class="token comment">-- All of these arguments will be passed to the server.</span>
+</code></pre>
+  </div>
+</div>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorWithStickyNavbar_LWe7" id="FireServerUnreliable"><code style="text-decoration:none">FireServerUnreliable</code><a href="#FireServerUnreliable" class="hash-link" aria-label="Direct link to FireServerUnreliable" title="Direct link to FireServerUnreliable">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/Madonox/Commons/blob/master/src/Commons/Netty/NettyClient.luau#L316"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>NettyClient<!-- -->.</code><code class="green_DgR4">FireServerUnreliable</code><code>(</code><div class="inset_uKQm"><div><code>eventId<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code><span class="inlineDescription_G7Er">-- <span>
+<p>The event id to trigger.</p>
+</span></span></div><div><code>...<!-- -->: </code><code class="blue_P4bS">any</code><span class="inlineDescription_G7Er">-- <span>
+<p>The arguments to pass to the server.</p>
+</span></span></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>This function fires an unreliable remote event with proper data serialization to the server.</p>
+<div class="admonition admonition-note alert alert--secondary">
+  <div class="admonition-heading">
+    <h5><span class="admonition-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16">
+          <path d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path>
+        </svg></span>note</h5>
+  </div>
+  <div class="admonition-content">
+    <p>
+      Events aren't fire instantly. They're queued into an outbound pool, and a maximum of 255 events of each type(unreliable, reliable) are fired to the server at once per Heartbeat (RunService.Heartbeat).
+      This function supports all data types, even if they aren't able to be serialized into buffers.
+      Example:
+    </p>
+    <pre class="language-lua"><code class="language-lua"><span class="token keyword">local</span> NettyClient <span class="token operator">=</span> <span class="token function">require</span><span class="token punctuation">(</span>game<span class="token punctuation">:</span><span class="token function">GetService</span><span class="token punctuation">(</span><span class="token string">"ReplicatedStorage"</span><span class="token punctuation">)</span><span class="token punctuation">:</span><span class="token function">WaitForChild</span><span class="token punctuation">(</span><span class="token string">"Commons"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>Netty<span class="token punctuation">.</span>Client
+NettyClient<span class="token punctuation">.</span><span class="token function">Start</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+NettyClient<span class="token punctuation">.</span><span class="token function">FireServerUnreliable</span><span class="token punctuation">(</span><span class="token string">"my event"</span><span class="token punctuation">,</span> <span class="token number">123</span><span class="token punctuation">,</span> CFrame<span class="token punctuation">.</span>identity<span class="token punctuation">,</span><span class="token string">"abc"</span><span class="token punctuation">,</span> workspace<span class="token punctuation">.</span>MyPart<span class="token punctuation">)</span> <span class="token comment">-- All of these arguments will be passed to the server.</span>
+</code></pre>
+  </div>
+</div>
+</div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
+    &quot;functions&quot;: [
+        {
+            &quot;name&quot;: &quot;_init&quot;,
+            &quot;desc&quot;: &quot;This function handles NettyClient initialization.  Since both the Server and Client modules exist under ReplicatedStorage, we use this function to prevent the server from constructing a client as well.&quot;,
+            &quot;params&quot;: [],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;private&quot;: true,
+            &quot;source&quot;: {
+                &quot;line&quot;: 51,
+                &quot;path&quot;: &quot;src/Commons/Netty/NettyClient.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Start&quot;,
+            &quot;desc&quot;: &quot;This function starts the network inbound and outbound handler.  Additionally, once NettyClient is started, you can begin to send and receive data to and from the server.&quot;,
+            &quot;params&quot;: [],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 170,
+                &quot;path&quot;: &quot;src/Commons/Netty/NettyClient.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;_startNetworkRelay&quot;,
+            &quot;desc&quot;: &quot;This function spawns the Netty outbound network connection.&quot;,
+            &quot;params&quot;: [],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;private&quot;: true,
+            &quot;source&quot;: {
+                &quot;line&quot;: 203,
+                &quot;path&quot;: &quot;src/Commons/Netty/NettyClient.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;RegisterEvent&quot;,
+            &quot;desc&quot;: &quot;This function registers an event locally.  This is used when the server wants to send data to the client.  Events can only have **one** callback.\n\n:::info\nEvents also need to be registered on the server, even if they have no callback.  Since Netty uses an identity based system, the client and server need to share event ids.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;id&quot;,
+                    &quot;desc&quot;: &quot;The event id to bind to.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;callback&quot;,
+                    &quot;desc&quot;: &quot;The callback function to run when this event is triggered.&quot;,
+                    &quot;lua_type&quot;: &quot;(...any) -&gt; nil&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 230,
+                &quot;path&quot;: &quot;src/Commons/Netty/NettyClient.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;SpawnEvent&quot;,
+            &quot;desc&quot;: &quot;This function spawns an event in the current thread.\n\n:::note\nThis function is mainly used internally, so it doesn&#x27;t offer much configuration / outside influence.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;eventType&quot;,
+                    &quot;desc&quot;: &quot;The event id to trigger.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;...&quot;,
+                    &quot;desc&quot;: &quot;The arguments to pass to the event.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 243,
+                &quot;path&quot;: &quot;src/Commons/Netty/NettyClient.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;FireServer&quot;,
+            &quot;desc&quot;: &quot;This function fires a reliable remote event with proper data serialization to the server.\n\n:::note\nEvents aren&#x27;t fire instantly.  They&#x27;re queued into an outbound pool, and a maximum of 255 events of each type(unreliable, reliable) are fired to the server at once per Heartbeat (RunService.Heartbeat).\nThis function supports all data types, even if they aren&#x27;t able to be serialized into buffers.\nExample:\n```lua\nlocal NettyClient = require(game:GetService(\&quot;ReplicatedStorage\&quot;):WaitForChild(\&quot;Commons\&quot;)).Netty.Client\nNettyClient.Start()\n\nNettyClient.FireServer(\&quot;my event\&quot;, 123, CFrame.identity,\&quot;abc\&quot;, workspace.MyPart) -- All of these arguments will be passed to the server.\n```&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;eventId&quot;,
+                    &quot;desc&quot;: &quot;The event id to trigger.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;...&quot;,
+                    &quot;desc&quot;: &quot;The arguments to pass to the server.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 267,
+                &quot;path&quot;: &quot;src/Commons/Netty/NettyClient.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;FireServerUnreliable&quot;,
+            &quot;desc&quot;: &quot;This function fires an unreliable remote event with proper data serialization to the server.\n\n:::note\nEvents aren&#x27;t fire instantly.  They&#x27;re queued into an outbound pool, and a maximum of 255 events of each type(unreliable, reliable) are fired to the server at once per Heartbeat (RunService.Heartbeat).\nThis function supports all data types, even if they aren&#x27;t able to be serialized into buffers.\nExample:\n```lua\nlocal NettyClient = require(game:GetService(\&quot;ReplicatedStorage\&quot;):WaitForChild(\&quot;Commons\&quot;)).Netty.Client\nNettyClient.Start()\n\nNettyClient.FireServerUnreliable(\&quot;my event\&quot;, 123, CFrame.identity,\&quot;abc\&quot;, workspace.MyPart) -- All of these arguments will be passed to the server.\n```&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;eventId&quot;,
+                    &quot;desc&quot;: &quot;The event id to trigger.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;...&quot;,
+                    &quot;desc&quot;: &quot;The arguments to pass to the server.&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 316,
+                &quot;path&quot;: &quot;src/Commons/Netty/NettyClient.luau&quot;
+            }
+        }
+    ],
+    &quot;properties&quot;: [],
+    &quot;types&quot;: [],
+    &quot;name&quot;: &quot;NettyClient&quot;,
+    &quot;desc&quot;: &quot;NettyClient is the client module for the Netty framework.  It is used to handle all forms of inbound and outbound traffic.\nNettyClient serializes any data it can into buffers.  Due to the nature of how Netty sends remote data, this approach to networking results in a significant decrease in outbound and inbound traffic, as well as lowering ping.&quot;,
+    &quot;source&quot;: {
+        &quot;line&quot;: 29,
+        &quot;path&quot;: &quot;src/Commons/Netty/NettyClient.luau&quot;
+    }
+}</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#types" class="table-of-contents__link toc-highlight">Types</a></li><li><a href="#properties" class="table-of-contents__link toc-highlight">Properties</a></li><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#FireServer" class="table-of-contents__link toc-highlight">.FireServer</a></li><li><a href="#FireServerUnreliable" class="table-of-contents__link toc-highlight">.FireServerUnreliable</a></li><li><a href="#RegisterEvent" class="table-of-contents__link toc-highlight">.RegisterEvent</a></li><li><a href="#SpawnEvent" class="table-of-contents__link toc-highlight">.SpawnEvent</a></li><li><a href="#Start" class="table-of-contents__link toc-highlight">.Start</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2024 Madonox. Built with Moonwave and Docusaurus.</div></div></div></footer></div>
+<script src="/Commons/assets/js/runtime~main.d3c31206.js"></script>
+<script src="/Commons/assets/js/main.96593064.js"></script>
+</body>
+</html>
