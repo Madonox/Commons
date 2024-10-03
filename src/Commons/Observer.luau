@@ -59,6 +59,18 @@ This function allows you to create a new observational table.
 :::note
 The returned data type is actually a `userdata`.  In order to performantly emit table read / write events, we need to use this setup.
 
+```lua
+local Observer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Observer
+local MyTable = Observer.new()
+
+MyTable.onRead(function(key)
+	print("Someone read " .. key .. " from MyTable!")
+end)
+
+MyTable.abc = 123
+
+print(MyTable.abc) -- Triggers the pre-defined onRead function
+```
 ]=]
 function Observer.new()
 	local readEmitters = {}
@@ -92,6 +104,20 @@ end
 This function cleans up an observational table.
 @param proxy {[any]:any} -- The observational table you want to clean up.
 
+```lua
+local Observer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Observer
+local MyTable = Observer.new()
+
+MyTable.onRead(function(key)
+	print("Someone read " .. key .. " from MyTable!")
+end)
+
+MyTable.abc = 123
+
+print(MyTable.abc) -- Triggers the pre-defined onRead function
+
+Observer.cleanup(MyTable)
+```
 ]=]
 function Observer.cleanup(proxy)
 	local proxyTable = OBSERVER_REF[proxy]
