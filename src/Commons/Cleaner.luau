@@ -100,6 +100,7 @@ TrackedCleaner.__index = TrackedCleaner
 
 --[=[
 @within TrackedCleaner
+@return TrackedCleaner
 Creates a new TrackedCleaner object.
 ]=]
 function TrackedCleaner.new()
@@ -109,6 +110,7 @@ end
 --[=[
 @within TrackedCleaner
 @param item any -- The item to add to the tracker.
+@return TrackedCleaner
 Add an item to the tracker.
 
 ```lua
@@ -132,6 +134,7 @@ end
 --[=[
 @within TrackedCleaner
 @param item any -- The item to remove from the tracker.
+@return TrackedCleaner
 Remove an item from the tracker.
 
 ```lua
