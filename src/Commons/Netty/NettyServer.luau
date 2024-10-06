@@ -29,7 +29,14 @@ export type NettyServer = {
 }
 
 local Players = game:GetService("Players")
+
+--[=[
+@class NettyServer
+NettyServer is the server module for the Netty framework.    It is used to handle all forms of inbound and outbound traffic.
+NettyServer serializes any data it can into buffers.  Due to the nature of how Netty sends remote data, this approach to networking results in a significant decrease in outbound and inbound traffic, as well as lowering ping.
+]=]
 local NettyServer:NettyServer = {} :: NettyServer
+
 local Buffer = require(script.Parent.Parent:WaitForChild("Buffer"))
 local BufferInscriber = Buffer.Inscriber
 
@@ -77,6 +84,11 @@ local function InoundEventHandler(player:Player,inboundBuffer:buffer,args:{[any]
 	inscriber:Destroy()
 end
 
+--[=[
+@within NettyServer
+@private
+This function handles NettyServer initialization.  Since both the Server and Client modules exist under ReplicatedStorage, we use this function to prevent the server from constructing a client as well.
+]=]
 function NettyServer._init()
 	if not Initialized then
 		Initialized = true
@@ -181,6 +193,11 @@ local function SafeAddPlayer(player)
 		outbound.unreliable[player] = {{},{},BufferInscriber.new()}
 	end
 end
+
+--[=[
+@within NettyServer
+This function starts the network inbound and outbound handler.  Once NettyServer is started, you can no longer register new events.
+]=]
 function NettyServer.Start()
 	if not NettyServer.Started then
 		NettyServer.Started = true
@@ -227,6 +244,16 @@ function NettyServer.Start()
 	end
 end
 
+--[=[
+@within NettyServer
+@param player Player -- The player triggering the event.
+@param eventType any -- The event id to trigger.
+@param ... any -- The arguments to pass to the event.
+This function spawns an event in the current thread.
+
+:::note
+This function is mainly used internally, so it doesn't offer much configuration / outside influence.
+]=]
 function NettyServer.SpawnEvent(player:Player,eventType:any,...:any)
 	local event = NettyServer.Events[eventType]
 	if event then
@@ -237,16 +264,57 @@ end
 local function BLANK_FUNCTION()
 	
 end
+
+--[=[
+@within NettyServer
+@param id any -- The event id to bind to.
+@param callback (Player,...any) -> nil? -- The callback function to run when this event is triggered.  If no callback is given, then a blank function will be used if the event is ever called.
+This function registers an event on the server.  All events need to be registered on the server, even if it is only used `server -> client`.  Events can only have **one** callback.
+
+```lua
+local NettyServer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server
+NettyServer.RegisterEvent("my event", function(player, some_number)
+	print(player.Name .. " has send " .. some_number .. " to the server")
+end)
+
+NettyServer.Start()
+```
+
+:::info
+There can only be a maximum of 255 events registered.  This limit was determined by the amount of bytes allocated to the outbound / inbound header for packet size.
+Additionally, you need to register events before you call `NettyServer.Start()`
+]=]
 function NettyServer.RegisterEvent(id:any,callback:(Player,...any) -> nil?)
 	if (not NettyServer.Events[id]) and (not NettyServer.Started) then
-		NettyServer.Events[id] = callback or BLANK_FUNCTION
-		table.insert(NettyServer.EventIds,id)
-		return
+		if #NettyServer.EventIds < 255 then
+			NettyServer.Events[id] = callback or BLANK_FUNCTION
+			table.insert(NettyServer.EventIds,id)
+			return
+		end
+		error("Cannot register another event!  You have hit the 255 event limit!")
 	end
 
 	error("Cannot create event " .. id ..";  The event might already exist, or NettyServer has already been started!")
 end
 
+--[=[
+@within NettyServer
+@param player Player -- The player you are sending the event to.
+@param eventId any -- The event id.
+@param ... any -- The arguments being sent to the player.
+
+This function sends an event to the specified client.
+```lua
+local NettyServer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server
+NettyServer.RegisterEvent("my event")
+
+NettyServer.Start()
+NettyServer.FireClient(game:GetService("Players"):WaitForChild("Player1"), "my event", 123, "abc", ...)
+```
+
+:::tip
+Netty supports any arguments.  Due to Netty's encoding design, any arguments that cannot be serialized are still passed in a table, allowing Netty to support all data types.
+]=]
 function NettyServer.FireClient(player:Player,eventId:any,...:any)
 	local bufferArgs = {}
 	local bufferSize = 2
@@ -270,6 +338,21 @@ function NettyServer.FireClient(player:Player,eventId:any,...:any)
 	table.insert(profile[2],{table.find(NettyServer.EventIds,eventId),bufferArgs,tableArgs})
 end
 
+--[=[
+@within NettyServer
+@param eventId any -- The event id.
+@param ... any -- The arguments being sent to all players.
+
+This function sends an event to all clients.
+
+```lua
+local NettyServer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server
+NettyServer.RegisterEvent("my event")
+
+NettyServer.Start()
+NettyServer.FireAllClients("my event", 123, "abc", ...)
+```
+]=]
 function NettyServer.FireAllClients(eventId:any,...:any)
 	local bufferArgs = {}
 	local bufferSize = 2
@@ -300,6 +383,23 @@ function NettyServer.FireAllClients(eventId:any,...:any)
 	table.clear(tableArgs)
 end
 
+--[=[
+@within NettyServer
+@param players {Player} -- The list of players to send the event to.
+@param eventId any -- The event id.
+@param ... any -- The arguments being sent to all players.
+
+This function sends an event to all clients.
+
+```lua
+local Players = game:GetService("Players")
+local NettyServer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server
+NettyServer.RegisterEvent("my event")
+
+NettyServer.Start()
+NettyServer.FireList({Players:WaitForChild("Player1"), Players:WaitForChild("Player2"), ...}, "my event", 123, "abc", ...)
+```
+]=]
 function NettyServer.FireList(players:{Player},eventId:any,...:any)
 	local bufferArgs = {}
 	local bufferSize = 2
@@ -330,6 +430,21 @@ function NettyServer.FireList(players:{Player},eventId:any,...:any)
 	table.clear(tableArgs)
 end
 
+--[=[
+@within NettyServer
+@param player Player -- The player you are sending the event to.
+@param eventId any -- The event id.
+@param ... any -- The arguments being sent to the player.
+
+This function sends an event to the specified client **over the unreliable channel**.
+```lua
+local NettyServer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server
+NettyServer.RegisterEvent("my event")
+
+NettyServer.Start()
+NettyServer.FireClientUnreliable(game:GetService("Players"):WaitForChild("Player1"), "my event", 123, "abc", ...)
+```
+]=]
 function NettyServer.FireClientUnreliable(player:Player,eventId:any,...:any)
 	local bufferArgs = {}
 	local bufferSize = 2
@@ -353,6 +468,21 @@ function NettyServer.FireClientUnreliable(player:Player,eventId:any,...:any)
 	table.insert(profile[2],{table.find(NettyServer.EventIds,eventId),bufferArgs,tableArgs})
 end
 
+--[=[
+@within NettyServer
+@param eventId any -- The event id.
+@param ... any -- The arguments being sent to all players.
+
+This function sends an event to all clients **over the unreliable channel**.
+
+```lua
+local NettyServer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server
+NettyServer.RegisterEvent("my event")
+
+NettyServer.Start()
+NettyServer.FireAllClientsUnreliable("my event", 123, "abc", ...)
+```
+]=]
 function NettyServer.FireAllClientsUnreliable(eventId:any,...:any)
 	local bufferArgs = {}
 	local bufferSize = 2
@@ -383,6 +513,23 @@ function NettyServer.FireAllClientsUnreliable(eventId:any,...:any)
 	table.clear(tableArgs)
 end
 
+--[=[
+@within NettyServer
+@param players {Player} -- The list of players to send the event to.
+@param eventId any -- The event id.
+@param ... any -- The arguments being sent to all players.
+
+This function sends an event to all clients **over the unreliable channel**.
+
+```lua
+local Players = game:GetService("Players")
+local NettyServer = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Server
+NettyServer.RegisterEvent("my event")
+
+NettyServer.Start()
+NettyServer.FireListUnreliable({Players:WaitForChild("Player1"), Players:WaitForChild("Player2"), ...}, "my event", 123, "abc", ...)
+```
+]=]
 function NettyServer.FireListUnreliable(players:{Player},eventId:any,...:any)
 	local bufferArgs = {}
 	local bufferSize = 2
