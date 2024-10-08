@@ -1,0 +1,11 @@
+[package]
+name = "Commons"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+description = "Commons is a utility module that aims to provide a variety of useful tools for Roblox developers."
+realm = "shared"
+license = "MIT"
+authors = "Madonox"
+exclude = ["build", "default.project.json", "moonwave.bat", "README.md"]
+
+[dependencies]
