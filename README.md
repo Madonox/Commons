@@ -1,3 +1,5 @@
+# Commons is depreciated as of now.  I'm remaking Netty from the ground up, with better performance and serialization practices.  Expect a release soon.
+
 # Commons
 Commons is a compiled set of useful Roblox utilities that aim to make game development easier for developers.
 
