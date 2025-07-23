@@ -1,54 +1,47 @@
 --!native
 --!optimize 2
 -- Madonox
--- 2024
-
+-- 2025
 export type NettyClient = {
-	_init: () -> nil;
-	_startNetworkRelay: () -> nil;
-	Start: () -> nil;
-	SpawnEvent: (any,...any) -> nil;
-	RegisterEvent: (any,(...any) -> nil) -> nil;
-	FireServer: (any,...any) -> nil;
-	FireServerUnreliable: (any,...any) -> nil;
+	_init: () -> nil,
+	_startNetworkRelay: () -> nil,
+	Start: () -> nil,
+	SpawnEvent: (any,...any) -> nil,
+	RegisterEvent: (any,(...any) -> nil) -> nil,
+	FireServer: (any,...any) -> nil,
+	FireServerUnreliable: (any,...any) -> nil,
 
-	Events: {[any]:(...any) -> nil};
-	EventIds: {[number]: any};
+	Events: {[any]:(...any) -> nil},
+	EventIds: {[number]: any},
 	Outbound: {
-		reliable: {any};
-		unreliable: {any};
-	};
-	Started: boolean;
+		reliable: {any},
+		unreliable: {any},
+	},
+	
+	Started: boolean,
 }
 
---[=[
-@class NettyClient
-NettyClient is the client module for the Netty framework.  It is used to handle all forms of inbound and outbound traffic.
-NettyClient serializes any data it can into buffers.  Due to the nature of how Netty sends remote data, this approach to networking results in a significant decrease in outbound and inbound traffic, as well as lowering ping.
-]=]
-local NettyClient:NettyClient = {} :: NettyClient
+local NettyClient = {} :: NettyClient
 
-local Buffer = require(script.Parent.Parent:WaitForChild("Buffer"))
+local RunService = game:GetService("RunService")
 
-local ReliableChannel:RemoteEvent
-local UnreliableChannel:UnreliableRemoteEvent
+local ReliableChannel: RemoteEvent
+local UnreliableChannel: UnreliableRemoteEvent
 
---[[
-
-BUFFER FORMAT:
-[(unsigned8) number_of_packets,(unsigned8) packet_type,(unsigned8) packet_arg_count, {(unsigned8) arg_type,(unsigned8) arg_index,(any) arg_data...}]
-
-]]
+local Buffer = require("./Buffer")
 
 local Initialized = false
 local EventsLoaded = false
 
---[=[
-@within NettyClient
-@private
-This function handles NettyClient initialization.  Since both the Server and Client modules exist under ReplicatedStorage, we use this function to prevent the server from constructing a client as well.
-]=]
-function NettyClient._init()
+local INDEX_FORMAT = "%d_%d"
+
+local OutboundInscriber = Buffer.Inscriber.new()
+local INSTANCE_MARKER = newproxy(false)
+
+local RelayActive = false
+local RelayCallbackThreads = {}
+
+function NettyClient._init(): ()
 	if not Initialized then
 		Initialized = true
 
@@ -56,117 +49,114 @@ function NettyClient._init()
 		NettyClient.EventIds = {
 			[1] = "_init"
 		}
+
 		NettyClient.Outbound = {
-			reliable = {{},{}};
-			unreliable = {{},{}};
+			reliable = { {}, {} },
+			unreliable = { {}, {} }
 		}
 
-		NettyClient.RegisterEvent("_init",function(ids)
-			NettyClient.EventIds = ids
+		NettyClient.RegisterEvent("_init", function(eventIdMap: { [number]: string }): ()
+			NettyClient.EventIds = eventIdMap
 			EventsLoaded = true
-			NettyClient._startNetworkRelay() -- call again in case the first attempt failed
+			NettyClient._startNetworkRelay()
 		end)
 	end
 end
 
-local INDEX_FORMAT = "%d_%d"
-local function GenIndexId(index,count)
-	return string.format(INDEX_FORMAT,count,index)
+local function GenIndexId(index: number, count: number): string
+	return string.format(INDEX_FORMAT, count, index)
 end
 
-local function InoundEventHandler(inboundBuffer:buffer,args:{[any]:any})
+local function InboundEventHandler(inboundBuffer: buffer, argumentMap: { [string]: any }): ()
 	local inscriber = Buffer.Inscriber.new(inboundBuffer)
+	local packetCount = inscriber:ReadType("unsigned8", 0)
 
-	local numPackets = inscriber:ReadType("unsigned8",0)
-	for packId = 1,numPackets do
-		local b_args = {}
+	for packetIndex = 1, packetCount do
+		local eventIdentifier = inscriber:ReadType("unsigned8")
+		local argumentCount = inscriber:ReadType("unsigned8")
+		local unpackedArguments: { any } = table.create(argumentCount)
 
-		local event_id,_ = inscriber:ReadType("unsigned8")
-		local arg_c,_ = inscriber:ReadType("unsigned8")
-		if arg_c > 0 then
-			for _ = 1,arg_c do
-				local argType,_ = inscriber:ReadType("unsigned8") -- NEEDS to be a variable as it's read first
-				local index,_ = inscriber:ReadType("unsigned8")
-				if argType == 0 then
-					b_args[index] = args[GenIndexId(index,packId)]
-					continue
-				end
-				local response,_ = inscriber:ReadType(Buffer.IdToType(argType))
-				b_args[index] = response
+		for _ = 1, argumentCount do
+			local argumentTypeId = inscriber:ReadType("unsigned8")
+			local argumentIndex = inscriber:ReadType("unsigned8")
+
+			local argumentValue
+			if argumentTypeId == 0 then
+				argumentValue = argumentMap[GenIndexId(argumentIndex, packetIndex)]
+			else
+				local argumentType = Buffer.IdToType(argumentTypeId)
+				argumentValue = inscriber:ReadType(argumentType)
 			end
+
+			unpackedArguments[argumentIndex] = argumentValue
 		end
 
-		pcall(NettyClient.SpawnEvent,NettyClient.EventIds[event_id],table.unpack(b_args))
+		task.spawn(NettyClient.SpawnEvent, NettyClient.EventIds[eventIdentifier], table.unpack(unpackedArguments))
 	end
 
 	inscriber:Destroy()
 end
 
-local OutboundInscriber = Buffer.Inscriber.new()
-local INSTANCE_MARKER = newproxy(false)
+local function ProcessOutboundPackets(packetSet: {any}, channel): ()
+	local sizeList = packetSet[1]
+	if #sizeList == 0 then
+		return
+	end
 
-local function ProcessOutboundPackets(packetSet:{any},channel)
-	local size = packetSet[1]
-	if #size > 0 then
-		--local OutboundInscriber = Buffer.Inscriber.new()
-		local packetArray = packetSet[2]
-		local packetCount = math.min(255,#packetArray)
+	local packetArray = packetSet[2]
+	local packetCount = math.min(255, #packetArray)
 
-		local usedMemory = 1
+	local usedMemory = 1
+	for _ = 1, packetCount do
+		usedMemory += sizeList[1]
+		table.remove(sizeList, 1)
+	end
 
-		for _ = 1,packetCount do
-			usedMemory += size[1]
-			table.remove(size,1)
+	OutboundInscriber:SetBuffer(buffer.create(usedMemory))
+	OutboundInscriber:WriteType("unsigned8", packetCount)
+
+	local outboundTable: {[string]: any} = {}
+
+	for i = 1, packetCount do
+		local packet = packetArray[1]
+		table.remove(packetArray, 1)
+
+		OutboundInscriber:WriteType("unsigned8", packet[1])
+
+		local bufferArgs = packet[2]
+		local argSize = #bufferArgs
+		OutboundInscriber:WriteType("unsigned8", argSize)
+
+		if argSize > 0 then
+			for index, arg in ipairs(bufferArgs) do
+				if arg == INSTANCE_MARKER then
+					OutboundInscriber:WriteType("unsigned8", 0)
+					OutboundInscriber:WriteType("unsigned8", index)
+				else
+					local bType = Buffer.ResolveType(arg)
+					OutboundInscriber:WriteType("unsigned8", Buffer.TypeToId(bType))
+					OutboundInscriber:WriteType("unsigned8", index)
+					OutboundInscriber:WriteType(bType, arg)
+				end
+			end
+			
+			table.clear(bufferArgs)
 		end
 
-		OutboundInscriber:SetBuffer(buffer.create(usedMemory))
-		local outboundTable = {}
-
-		OutboundInscriber:WriteType("unsigned8",packetCount) -- total # of calls
-
-		for i = 1,packetCount do
-			local packet = packetArray[1]
-			table.remove(packetArray,1)
-			
-			OutboundInscriber:WriteType("unsigned8",packet[1]) -- event id
-
-			local bufferArgs = packet[2]
-			local argSize = #bufferArgs
-			OutboundInscriber:WriteType("unsigned8",argSize) -- bufferArgs contains markers where instances should be
-			if argSize > 0 then
-				for index,arg in bufferArgs do
-					if arg == INSTANCE_MARKER then
-						OutboundInscriber:WriteType("unsigned8",0)
-						OutboundInscriber:WriteType("unsigned8",index)
-						continue
-					end
-
-					local bType = Buffer.ResolveType(arg)
-					OutboundInscriber:WriteType("unsigned8",Buffer.TypeToId(bType))
-					OutboundInscriber:WriteType("unsigned8",index)
-					OutboundInscriber:WriteType(bType,arg)
-				end
-				table.clear(bufferArgs)
-			end
-
-			local instanceArgs = packet[3]
-			for id,arg in instanceArgs do
-				outboundTable[GenIndexId(id,i)] = arg
-			end
-			table.clear(instanceArgs)
-			table.clear(packet)
+		local instanceArgs = packet[3]
+		for id, arg in pairs(instanceArgs) do
+			outboundTable[GenIndexId(id, i)] = arg
 		end
 		
-		OutboundInscriber:SetPointer(0)
-		channel:FireServer(OutboundInscriber.buffer,outboundTable)
-		table.clear(outboundTable)
+		table.clear(instanceArgs)
+		table.clear(packet)
 	end
+
+	OutboundInscriber:SetPointer(0)
+	channel:FireServer(OutboundInscriber.buffer, outboundTable)
+	table.clear(outboundTable)
 end
 
---[=[
-@within NettyClient
-This function starts the network inbound and outbound handler.  Additionally, once NettyClient is started, you can begin to send and receive data to and from the server.
-]=]
 function NettyClient.Start()
 	if not NettyClient.Started then
 		NettyClient.Started = true
@@ -174,175 +164,104 @@ function NettyClient.Start()
 		ReliableChannel = script.Parent:WaitForChild("RemoteEvent")
 		UnreliableChannel = script.Parent:WaitForChild("UnreliableRemoteEvent")
 
-		-- force gen get remote
 		OutboundInscriber:SetBuffer(buffer.create(3))
 		OutboundInscriber:WriteType("unsigned8",1)
 		OutboundInscriber:WriteType("unsigned8",1)
 		OutboundInscriber:WriteType("unsigned8",0)
 		ReliableChannel:FireServer(OutboundInscriber.buffer,{})
 
-		-- reset
 		OutboundInscriber:SetPointer(0)
-		OutboundInscriber:SetBuffer(nil) -- set to nil to allow gc to work it's magic
+		OutboundInscriber:SetBuffer(nil)
 
-		ReliableChannel.OnClientEvent:Connect(InoundEventHandler)
-		UnreliableChannel.OnClientEvent:Connect(InoundEventHandler)
+		ReliableChannel.OnClientEvent:Connect(InboundEventHandler)
+		UnreliableChannel.OnClientEvent:Connect(InboundEventHandler)
 		
 		NettyClient._startNetworkRelay()
 	end
 end
 
-local RelayActive = false
-local RelayCallbackThreads = {}
+function NettyClient._startNetworkRelay(): ()
+	if not EventsLoaded or RelayActive then return end
+	RelayActive = true
 
---[=[
-@within NettyClient
-@private
-This function spawns the Netty outbound network connection.
-]=]
-function NettyClient._startNetworkRelay()
-	if EventsLoaded and not RelayActive then
-		RelayActive = true
-		local reliable = NettyClient.Outbound.reliable
-		local unreliable = NettyClient.Outbound.unreliable
+	local reliable = NettyClient.Outbound.reliable
+	local unreliable = NettyClient.Outbound.unreliable
 
-		game:GetService("RunService").Heartbeat:Connect(function()
-			ProcessOutboundPackets(unreliable,UnreliableChannel)
-			ProcessOutboundPackets(reliable,ReliableChannel)
-		end)
+	RunService.Heartbeat:Connect(function()
+		ProcessOutboundPackets(unreliable, UnreliableChannel)
+		ProcessOutboundPackets(reliable, ReliableChannel)
+	end)
 
-		for _,thread in RelayCallbackThreads do
-			coroutine.resume(thread)
-		end
-		table.clear(RelayCallbackThreads)
+	for _, thread in ipairs(RelayCallbackThreads) do
+		coroutine.resume(thread)
+	end
+
+	table.clear(RelayCallbackThreads)
+end
+
+function NettyClient.RegisterEvent(eventIdentifier: any, callback: (...any) -> nil): ()
+	NettyClient.Events[eventIdentifier] = callback
+end
+
+function NettyClient.SpawnEvent(eventIdentifier: any, ...: any): ()
+	local eventCallback = NettyClient.Events[eventIdentifier]
+	if eventCallback then
+		eventCallback(...)
 	end
 end
 
---[=[
-@within NettyClient
-@param id any -- The event id to bind to.
-@param callback (...any) -> nil -- The callback function to run when this event is triggered.
-This function registers an event locally.  This is used when the server wants to send data to the client.  Events can only have **one** callback.
-
-:::info
-Events also need to be registered on the server, even if they have no callback.  Since Netty uses an identity based system, the client and server need to share event ids.
-]=]
-function NettyClient.RegisterEvent(id:any,callback:(...any) -> nil)
-	NettyClient.Events[id] = callback
-end
-
---[=[
-@within NettyClient
-@param eventType any -- The event id to trigger.
-@param ... any -- The arguments to pass to the event.
-This function spawns an event in the current thread.
-
-:::note
-This function is mainly used internally, so it doesn't offer much configuration / outside influence.
-]=]
-function NettyClient.SpawnEvent(eventType:any,...:any)
-	local event = NettyClient.Events[eventType]
-	if event then
-		event(...)
+local function fireServer(eventIdentifier: any, ...: any): (number, { [number]: any }, { [number]: any })
+	if not NettyClient.Started then
+		error("Cannot call FireServer until NettyClient has been started!")
 	end
-end
 
---[=[
-@within NettyClient
-@param eventId any -- The event id to trigger.
-@param ... any -- The arguments to pass to the server.
-This function fires a reliable remote event with proper data serialization to the server.
+	if not RelayActive then
+		table.insert(RelayCallbackThreads, coroutine.running())
+		coroutine.yield()
+	end
 
-:::note
-Events aren't fire instantly.  They're queued into an outbound pool, and a maximum of 255 events of each type(unreliable, reliable) are fired to the server at once per Heartbeat (RunService.Heartbeat).
-This function supports all data types, even if they aren't able to be serialized into buffers.
-Example:
-```lua
-local NettyClient = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Client
-NettyClient.Start()
+	local bufferArguments: { [number]: any } = {}
+	local tableArguments: { [number]: any } = {}
+	local bufferSize = 2
+	local arguments = { ... }
 
-NettyClient.FireServer("my event", 123, CFrame.identity,"abc", workspace.MyPart) -- All of these arguments will be passed to the server.
-```
-]=]
-function NettyClient.FireServer(eventId:any,...:any)
-	if NettyClient.Started then
-		if not RelayActive then
-			table.insert(RelayCallbackThreads,coroutine.running())
-			coroutine.yield()
-		end
-		local bufferArgs = {}
-		local bufferSize = 2
-		local tableArgs = {}
+	for index = 1, #arguments do
+		local argument = arguments[index]
+		local resolvedType = Buffer.ResolveType(argument)
 
-		for index,arg in {...} do
-			local bType = Buffer.ResolveType(arg)
-			if bType then
-				bufferSize += Buffer.SizeOf(bType) + 2
-				bufferArgs[index] = arg
-				continue
-			end
-
-			bufferArgs[index] = INSTANCE_MARKER
+		if resolvedType then
+			bufferSize += Buffer.SizeOf(resolvedType) + 2
+			bufferArguments[index] = argument
+		else
+			bufferArguments[index] = INSTANCE_MARKER
 			bufferSize += 2
-			tableArgs[index] = arg
+			tableArguments[index] = argument
 		end
-
-		local channel = NettyClient.Outbound.reliable
-		table.insert(channel[1],bufferSize)
-		--channel[1] += bufferSize
-		table.insert(channel[2],{table.find(NettyClient.EventIds,eventId),bufferArgs,tableArgs})
-		return
 	end
-	error("Cannot call FireServer until NettyClient has been started!")
+
+	return bufferSize, bufferArguments, tableArguments
 end
 
---[=[
-@within NettyClient
-@param eventId any -- The event id to trigger.
-@param ... any -- The arguments to pass to the server.
-This function fires an unreliable remote event with proper data serialization to the server.
+function NettyClient.FireServer(eventIdentifier: any, ...: any): ()
+	local bufferSize, bufferArguments, tableArguments = fireServer(eventIdentifier, ...)
+	local reliableChannel = NettyClient.Outbound.reliable
+	table.insert(reliableChannel[1], bufferSize)
+	table.insert(reliableChannel[2], {
+		table.find(NettyClient.EventIds, eventIdentifier),
+		bufferArguments,
+		tableArguments
+	})
+end
 
-:::note
-Events aren't fire instantly.  They're queued into an outbound pool, and a maximum of 255 events of each type(unreliable, reliable) are fired to the server at once per Heartbeat (RunService.Heartbeat).
-This function supports all data types, even if they aren't able to be serialized into buffers.
-Example:
-```lua
-local NettyClient = require(game:GetService("ReplicatedStorage"):WaitForChild("Commons")).Netty.Client
-NettyClient.Start()
-
-NettyClient.FireServerUnreliable("my event", 123, CFrame.identity,"abc", workspace.MyPart) -- All of these arguments will be passed to the server.
-```
-]=]
-function NettyClient.FireServerUnreliable(eventId:any,...:any)
-	if NettyClient.Started then
-		if not RelayActive then
-			table.insert(RelayCallbackThreads,coroutine.running())
-			coroutine.yield()
-		end
-		local bufferArgs = {}
-		local bufferSize = 2
-		local tableArgs = {}
-
-		for index,arg in {...} do
-			local bType = Buffer.ResolveType(arg)
-			if bType then
-				bufferSize += Buffer.SizeOf(bType) + 2
-				bufferArgs[index] = arg
-				continue
-			end
-
-			bufferArgs[index] = INSTANCE_MARKER
-			bufferSize += 2
-			tableArgs[index] = arg
-		end
-
-		local channel = NettyClient.Outbound.unreliable
-		table.insert(channel[1],bufferSize)
-		--channel[1] += bufferSize
-		table.insert(channel[2],{table.find(NettyClient.EventIds,eventId),bufferArgs,tableArgs})
-		return
-	end
-	error("Cannot call FireServer until NettyClient has been started!")
+function NettyClient.FireServerUnreliable(eventIdentifier: any, ...: any): ()
+	local bufferSize, bufferArguments, tableArguments = fireServer(eventIdentifier, ...)
+	local unreliableChannel = NettyClient.Outbound.unreliable
+	table.insert(unreliableChannel[1], bufferSize)
+	table.insert(unreliableChannel[2], {
+		table.find(NettyClient.EventIds, eventIdentifier),
+		bufferArguments,
+		tableArguments
+	})
 end
 
 return NettyClient

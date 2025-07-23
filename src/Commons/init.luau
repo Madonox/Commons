@@ -1,25 +1,26 @@
+--!strict
 -- Madonox
--- 2024
+-- 2025
+local RunService = game:GetService("RunService")
 
-local Buffer = require(script:WaitForChild("Buffer"))
-local Netty = require(script:WaitForChild("Netty"))
-local Thread = require(script:WaitForChild("Thread"))
-local Observer = require(script:WaitForChild("Observer"))
+local NettyClient = require("@self/NettyClient")
+local NettyServer = require("@self/NettyServer")
 
-type Commons = {
-    Netty: Netty.Netty;
-    Buffer: Buffer.BufferLibrary;
-	Thread: Thread.Thread;
-	Observer: Observer.Observer;
+export type Netty = {
+    Client: NettyClient.NettyClient;
+    Server: NettyServer.NettyServer;
 }
 
-local Commons:Commons = {
-    Netty = Netty;
-    Buffer = Buffer;
-	Thread = Thread;
-	Observer = Observer;
+local Netty = {
+    Client = NettyClient;
+    Server = NettyServer;
 }
 
-table.freeze(Commons)
+if RunService:IsServer() then
+    NettyServer._init()
+    return Netty
+end
 
-return Commons
+NettyClient._init()
+
+return Netty
